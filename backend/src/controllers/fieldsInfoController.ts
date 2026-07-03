@@ -1,8 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
 import centroid from '@turf/centroid';
+import rewind from '@turf/rewind';
 import axios from 'axios';
 import { Geometry } from 'geojson';
 import * as mongodb from '../mongo/mongodb';
+import jwt from 'jsonwebtoken';
+
+interface JwtPayload {
+  _id: string;
+  username: string;
+}
+
+const getUserId = (req: Request): string => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return '';
+    const decoded = jwt.verify(token, process.env.SECRET as string) as JwtPayload;
+    return decoded._id;
+  } catch {
+    return '';
+  }
+};
 
 // ── Reverse geocoding Nominatimilla ──────────────────────────
 const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
@@ -39,7 +57,7 @@ const fetchRuokavirastoInfo = async (lat: number, lon: number): Promise<{
         outputFormat: 'application/json',
         CQL_FILTER: `INTERSECTS(geometry,POINT(${lon} ${lat}))`,
         maxFeatures: 1,
-      },  
+      },
       timeout: 8000,
     });
     const features = res.data?.features;
@@ -65,9 +83,10 @@ export const getFieldInfo = async (
 ): Promise<void> => {
   let geometry: Geometry | null = null;
   try {
-    geometry = typeof req.body.geometry === 'object'
+    const raw = typeof req.body.geometry === 'object'
       ? req.body.geometry
       : JSON.parse(req.body.geometry);
+    geometry = rewind(raw, { mutate: false }) as unknown as Geometry;
   } catch {
     res.status(400).json({ error: 'Invalid geometry' });
     return;
@@ -87,7 +106,6 @@ export const getFieldInfo = async (
       fetchRuokavirastoInfo(lat, lon),
     ]);
 
-    // Rakennetaan nimi: Ruokaviraston lohkon nimi tai osoite
     const name = ruokavirasto.fieldName || address || '';
 
     res.status(200).json({
@@ -95,7 +113,8 @@ export const getFieldInfo = async (
       address,
       fieldName: ruokavirasto.fieldName,
       cropType:  ruokavirasto.cropType,
-      name,                           // ← frontend välittää tämän /api/ndvi/dates:lle
+      name,
+      geometry,   // ← korjattu geometria frontendille
     });
   } catch (err: unknown) {
     console.error('getFieldInfo error:', err);
@@ -110,7 +129,12 @@ export const getFields = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const data = await mongodb.getAllDateSets();
+    const userId = getUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    const data = await mongodb.getAllDateSets(userId);
     res.status(200).json(data);
   } catch (err: unknown) {
     console.error('getFields error:', err);

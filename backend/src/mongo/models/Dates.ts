@@ -19,28 +19,19 @@ interface IGeometry {
 
 interface IDates extends Document {
   id: string;
-  name: string;        // ← lisätty
+  name: string;
+  userIds: string[];    // ← array, useampi käyttäjä voi omistaa saman geometrian
   dates: IDateItem[];
   geometry: IGeometry;
   area: number;
 }
 
 const DatesSchema: Schema = new Schema({
-  id: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  name: {
-    type: String,
-    default: '',       // ← lisätty, ei pakollinen (vanhat dokumentit toimivat)
-  },
+  id: { type: String, required: true, unique: true },
+  name: { type: String, default: '' },
+  userIds: { type: [String], default: [] },  // ← lisätty
   dates: { type: Array, default: [] },
-  geometry: {
-    type: Object,
-    required: true,
-    unique: true,
-  },
+  geometry: { type: Object, required: true, unique: true },
   area: { type: Number },
 });
 

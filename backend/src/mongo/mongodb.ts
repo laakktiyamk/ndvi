@@ -64,22 +64,51 @@ export const login = async (email: string): Promise<IUser | null> => {
 /**
  * Saves dates data.
  */
+
+/**
+ * saveDates — lisätty userId $addToSet:lla (ei duplikaatteja)
+ */
 export const saveDates = async (
   id: string,
   data: any[],
   geometry: any,
   area: number,
-  name: string = ''   // ← uusi optionaalinen parametri
+  name: string = '',
+  userId: string = ''
 ): Promise<boolean> => {
   try {
     await Dates.findOneAndUpdate(
       { id },
-      { id, name, dates: data, geometry, area },
+      {
+        $set:      { id, dates: data, geometry, area, name },
+        $addToSet: { userIds: userId },   // ← lisää userId arrayhin, ei duplikaatteja
+      },
       { upsert: true }
     );
     return true;
   } catch (err: any) {
     console.error("Error saving dates:", err.message);
+    return false;
+  }
+};
+
+/**
+ * updateDates — lisätty userId $addToSet:lla
+ */
+
+export const updateDates = async (id: string, newItem: any[], userId: string = ''): Promise<boolean> => {
+  try {
+    await Dates.findOneAndUpdate(
+      { id },
+      {
+        $push:     { dates: { $each: newItem, $position: 0 } },
+        $addToSet: { userIds: userId },
+      },
+      { returnDocument: 'after' }
+    );
+    return true;
+  } catch (err) {
+    console.log("ERROR", err);
     return false;
   }
 };
@@ -110,22 +139,6 @@ export const insertManyDates = async (dataArray: any[]): Promise<boolean> => {
   }
 };
 
-/**
- * Updates dates data.
- */
-export const updateDates = async (id: string, newItem: any[]): Promise<boolean> => {
-  try {
-    await Dates.findOneAndUpdate(
-      { id: id },
-      { $push: { dates: { $each: newItem, $position: 0 } } },
-      { returnDocument: 'after' }
-    );
-    return true;
-  } catch (err) {
-    console.log("ERROR", err);
-    return false;
-  }
-};
 
 /**
  * Deletes dates data.
@@ -150,10 +163,13 @@ export const getDates = async (id: string): Promise<IDates | null> => {
 /**
  * Retrieves all date sets.
  */
-export const getAllDateSets = async (): Promise<IDates[]> => {
-  return await Dates.find({}, { _id: 0, __v: 0, geometry: 0 });
-};
 
+export const getAllDateSets = async (userId: string): Promise<IDates[]> => {
+  return await Dates.find(
+    { userIds: userId },              // ← vain käyttäjän omat lohkot
+    { _id: 0, __v: 0, geometry: 0 }
+  );
+};
 /**
  * Saves user data.
  */

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import axios from "axios";
 import pLimit from 'p-limit';
 import * as hash from "../utils/hash";
+import jwt from 'jsonwebtoken';
 const geoUtils = require("../utils/geoUtils");
 import { getStatistics } from "../sentinelhub/getStatistics";
 import * as imageRef from "../sentinelhub/getImage";
@@ -13,8 +14,23 @@ import isDateInGrowingSeason from "../utils/isdateingrowingseason";
 import { SentinelRequest } from "../sentinelhub/sentinelhub_token";
 import { IImage } from '../types';
 import { getWeatherFromDbOrFetch } from '../services/weatherService';
-
 import rewind from '@turf/rewind';
+
+interface JwtPayload {
+  _id: string;
+  username: string;
+}
+
+const getUserId = (req: Request): string => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return '';
+    const decoded = jwt.verify(token, process.env.SECRET as string) as JwtPayload;
+    return decoded._id;
+  } catch {
+    return '';
+  }
+};
 
 // ============================================================
 // Interfaces
@@ -50,10 +66,6 @@ interface SentinelDate {
   sentinelid: string;
   ndviClassPercentages: number[];
 }
-
-// ============================================================
-// Global auth token
-// ============================================================
 
 let globalAuthToken: string | null | undefined = null;
 
@@ -113,15 +125,8 @@ const getImageWithData = async (item: SentinelDate, geometry: any): Promise<any>
   const image = await imageRef.getImage(item.generationtime, geometry);
   if (image) {
     const data = await imageDataRef.getImageData(
-      geometry,
-      image,
-      {
-        id: item.sentinelid,
-        average: item.stats.average,
-        max: item.stats.max,
-        min: item.stats.min,
-        std: item.stats.std,
-      },
+      geometry, image,
+      { id: item.sentinelid, average: item.stats.average, max: item.stats.max, min: item.stats.min, std: item.stats.std },
       item.ndviClassPercentages
     );
     return data;
@@ -134,7 +139,8 @@ const saveSentinelDataToMongo = async (
   geometry: any,
   fromTime: Date | null,
   toTime: Date,
-  name: string = ''
+  name: string = '',
+  userId: string = ''
 ): Promise<boolean> => {
   const id   = hash.sha256(geometry);
   const area = geoUtils.getAreaFromGeometry(geometry);
@@ -144,34 +150,25 @@ const saveSentinelDataToMongo = async (
 
   try {
     if (save) {
-      res = await mongodb.saveDates(id, savedDates, geometry, area ?? 0, name);
+      res = await mongodb.saveDates(id, savedDates, geometry, area ?? 0, name, userId);
     }
 
     const startTime = performance.now();
     const dates = await getSentinelDates(geometry, fromTime, toTime);
-    const elapsedTime = performance.now() - startTime;
-    console.log(dates.length, " STATISTICS ElapsedTime (sec): ", elapsedTime / 1000);
+    console.log(dates.length, " STATISTICS ElapsedTime (sec): ", (performance.now() - startTime) / 1000);
 
     if (dates.length > 0) {
-      const imgStartTime = performance.now();
-
       const limit = pLimit(5);
       await axios.all(
         dates.map(item => limit(async () => {
           const _data = await getImageWithData(item, geometry);
-          if (_data) {
-            await mongodb.saveImage(_data);
-          }
+          if (_data) await mongodb.saveImage(_data);
         }))
       );
 
-      const imgElapsedTime = performance.now() - imgStartTime;
-      console.log("IMAGES ElapsedTime (sec): ", imgElapsedTime / 1000);
-
       savedDates = dates.map(({ ndviClassPercentages, ...rest }) => rest);
       savedDates = dateTime.sortByDateTime(savedDates, "generationtime", "desc");
-
-      res = await mongodb.updateDates(id, savedDates);
+      res = await mongodb.updateDates(id, savedDates, userId);
       return res;
     }
 
@@ -187,43 +184,35 @@ async function getDates(
   geometry: any,
   fromTime: Date | null,
   toTime: Date,
-  name: string = ''
+  name: string = '',
+  userId: string = ''
 ): Promise<any> {
-  let status: boolean = true;
   const id = hash.sha256(geometry);
   let data = await mongodb.getDates(id);
 
-  console.log("data", data);
-
   if (!data || !data.dates || data.dates.length === 0) {
-    console.log("#1");
-    status = await saveSentinelDataToMongo(true, geometry, fromTime, toTime, name);
-  } else if (data.dates.length === 0) {
-    console.log("#2");
-    return null;
+    await saveSentinelDataToMongo(true, geometry, fromTime, toTime, name, userId);
   } else {
-    console.log("#3", status);
     if (isDateInGrowingSeason(toTime, growingSeason)) {
       if (data.dates[0].generationtime < dateTime.zeroDateTime(toTime)) {
         const newFromTime = new Date(dateTime.addOneDay(data.dates[0].generationtime));
-        status = await saveSentinelDataToMongo(false, geometry, newFromTime, toTime, name);
+        await saveSentinelDataToMongo(false, geometry, newFromTime, toTime, name, userId);
       }
     }
-    // Päivitä nimi jos puuttuu kannasta
-    if (name && !data.name) {
-      await mongodb.saveDates(id, data.dates, geometry, data.area ?? 0, name);
+    // Päivitä nimi ja userId jos puuttuu
+    if ((name && !data.name) || (userId && !data.userIds?.includes(userId))) {
+      await mongodb.saveDates(id, data.dates, geometry, data.area ?? 0, name || data.name, userId);
     }
   }
 
   if (returnData) {
-    data = await mongodb.getDates(id);
-    return data;
+    return await mongodb.getDates(id);
   }
   return null;
 }
 
 // ============================================================
-// Express route handlers
+// Route handlers
 // ============================================================
 
 export const AOIs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -240,24 +229,23 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
 
   let geometry: any = null;
   try {
-    geometry = typeof req.body.geometry !== "object"
+    const raw = typeof req.body.geometry !== "object"
       ? JSON.parse(req.body.geometry)
       : req.body.geometry;
-      //geometry = rewind(geometry, { reverse: false });
+    geometry = rewind(raw, { mutate: false });
   } catch (e) { }
 
   const fromTime = new Date(req.body.start_date);
-  const toTime   = new Date();          // ← aina tänään
-  const name     = req.body.name ?? ''; // ← tallennetaan kantaan
+  const toTime   = new Date();
+  const name     = req.body.name ?? '';
+  const userId   = getUserId(req);     // ← puretaan JWT:stä
 
-  const data = await getDates(true, geometry, fromTime, toTime, name);
-  let elapsedTime = performance.now() - startTime;
-  console.log("Request handled in (sec): ", elapsedTime / 1000);
+  const data = await getDates(true, geometry, fromTime, toTime, name, userId);
+  console.log("Request handled in (sec): ", (performance.now() - startTime) / 1000);
 
-  const wstartTime = performance.now();
-  const _data = await getWeatherFromDbOrFetch(geometry, fromTime, toTime);
-  elapsedTime = performance.now() - wstartTime;
-  console.log("Weather data saved in (sec): ", elapsedTime / 1000);
+  const wStart = performance.now();
+  await getWeatherFromDbOrFetch(geometry, fromTime, toTime);
+  console.log("Weather saved in (sec): ", (performance.now() - wStart) / 1000);
 
   if (updateDbFlag) {
     res.status(222).send("done");
@@ -276,10 +264,7 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
 
 interface RawImageData {
   dataUrl: { buffer: Buffer };
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
+  minX: number; minY: number; maxX: number; maxY: number;
 }
 
 interface ProcessedImageData extends Omit<RawImageData, 'dataUrl'> {
@@ -296,9 +281,7 @@ export const image = async (req: Request, res: Response, next: NextFunction): Pr
       const data = rawData.map((item) => {
         const updatedImage: ProcessedImageData = {
           ...item.image,
-          dataUrl: `data:image/png;base64,${Buffer.from(
-            item.image.dataUrl.buffer
-          ).toString('base64')}`,
+          dataUrl: `data:image/png;base64,${Buffer.from(item.image.dataUrl.buffer).toString('base64')}`,
         };
         return { ...item, image: updatedImage };
       });
@@ -311,10 +294,7 @@ export const image = async (req: Request, res: Response, next: NextFunction): Pr
 
   const _data = await mongodb.getImage(id as string);
   if (_data) {
-    const dataUrl = `data:image/png;base64,${Buffer.from(
-      _data.image.dataUrl.buffer
-    ).toString('base64')}`;
-    const data = { ..._data, image: { ..._data.image, dataUrl } };
-    res.status(200).send(data);
+    const dataUrl = `data:image/png;base64,${Buffer.from(_data.image.dataUrl.buffer).toString('base64')}`;
+    res.status(200).send({ ..._data, image: { ..._data.image, dataUrl } });
   }
 };

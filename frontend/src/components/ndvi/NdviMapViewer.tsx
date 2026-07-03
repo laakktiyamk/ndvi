@@ -48,7 +48,7 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
           (a, b) => new Date(a.id.split('_')[0]).getTime() - new Date(b.id.split('_')[0]).getTime()
         );
         setAllImages(data);
-        const years = [...new Set(data.map((img) => getYear(img.id.split('_')[0])))].sort();
+        const years = [...new Set(data.map((img) => getYear(img.id.split('_')[0])))].sort((a, b) => b - a);
         setAvailableYears(years);
         setImages(data);
         setIndex(data.length - 1);
@@ -106,6 +106,8 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
   const isFirst   = index === 0;
   const isLast    = index === images.length - 1;
 
+
+  // <MenuItem value="all">Kaikki</MenuItem>
   return (
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: { md: '100%' } }}>
 
@@ -130,10 +132,10 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
                   label="Vuosi"
                   onChange={(e) => setSelectedYear(e.target.value as number | 'all')}
                 >
-                  <MenuItem value="all">Kaikki</MenuItem>
+                  
                   {availableYears.map((y) => (
                     <MenuItem key={y} value={y}>{y}</MenuItem>
-                  ))}
+                  ))}Fq
                 </Select>
               </FormControl>
               <Typography variant="caption" color="text.secondary">
