@@ -1,0 +1,17 @@
+@baseUrl = http://localhost:8000
+
+### 1. Perushaku: Pöljä
+GET {{baseUrl}}/api/geocode?text=Pöljä
+Accept: application/json
+
+### 3. Haku: Rytky Kuopio
+GET {{baseUrl}}/api/geocode?text=Rytky Kuopio
+Accept: application/json
+
+### 4. Postinumerolla haku
+GET {{baseUrl}}/api/geocode?text=70800
+Accept: application/json
+
+### 5. Virhetilanne: tyhjä haku (testaa backendin validointia)
+GET {{baseUrl}}/api/geocode?text=
+Accept: application/json

@@ -1,0 +1,47 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/mongoose": "^5.11.96",
+    "@types/node": "^25.9.3",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@sentinel-hub/sentinelhub-js": "^0.12.6",
+    "@turf/area": "^6.5.0",
+    "@turf/bbox": "^7.3.5",
+    "@turf/bbox-polygon": "^7.3.5",
+    "@turf/centroid": "^7.3.5",
+    "@turf/intersect": "^7.3.5",
+    "@turf/rewind": "^7.3.5",
+    "@turf/union": "^7.3.5",
+    "axios": "^1.18.1",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "jimp": "^1.6.1",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.7.0",
+    "mongoose-unique-validator": "^6.1.1",
+    "morgan": "^1.11.0",
+    "p-limit": "^7.3.0"
+  }
+}
