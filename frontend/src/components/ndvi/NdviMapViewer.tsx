@@ -71,9 +71,9 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
 
   // Suodata vuoden mukaan
   useEffect(() => {
-    const filtered = selectedYear === 'all'
-      ? allImages
-      : allImages.filter((img) => getYear(img.id.split('_')[0]) === selectedYear);
+    const filtered = allImages.filter(
+      (img) => getYear(img.id.split('_')[0]) === selectedYear
+    );
     setImages(filtered);
     setIndex(filtered.length - 1);
   }, [selectedYear, allImages]);
