@@ -3,15 +3,15 @@ import {
   Box, Paper, Typography, IconButton, Chip,
   CircularProgress, Alert, Skeleton, Divider,
   Select, MenuItem, FormControl, InputLabel,
+  Tooltip,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+
 import FullscreenablePanel from '../shared/FullscreenablePanel';
 import { fetchAllImages } from '../../services/ndviService';
 import type { NdviImage } from '../../types';
-
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import Tooltip from '@mui/material/Tooltip';
 
 interface Props {
   sentinelid: string;
@@ -20,28 +20,29 @@ interface Props {
 
 const NDVI_COLOR_LABEL = (v: number) => {
   if (v >= 0.6) return { label: 'Erinomainen', color: '#2E7D32' };
-  if (v >= 0.4) return { label: 'Hyvä', color: '#689F38' };
+  if (v >= 0.4) return { label: 'Hyvä',        color: '#689F38' };
   if (v >= 0.2) return { label: 'Kohtalainen', color: '#F9A825' };
-  return { label: 'Heikko', color: '#C62828' };
+  return              { label: 'Heikko',        color: '#C62828' };
 };
 
 const fmt = (date: string) =>
   new Date(date).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
 const getYear = (date: string) => new Date(date).getFullYear();
+//const getDateStr = (id: string) => id.split('_')[0].split('T')[0]; // "YYYY-MM-DD"
 
 export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
-  const [allImages, setAllImages] = useState<NdviImage[]>([]);
-  const [images, setImages] = useState<NdviImage[]>([]);
-  const [selectedYear, setSelectedYear] = useState<number | ''>('');
-  const [calendarOpen, setCalendarOpen] = useState(false);
-
+  const [allImages, setAllImages]           = useState<NdviImage[]>([]);
+  const [images, setImages]                 = useState<NdviImage[]>([]);
+  const [selectedYear, setSelectedYear]     = useState<number>(new Date().getFullYear());
   const [availableYears, setAvailableYears] = useState<number[]>([]);
-  const [index, setIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [touchStartX, setTouchStartX] = useState(0);
+
+  const [index, setIndex]                   = useState(0);
+  const [loading, setLoading]               = useState(true);
+  const [imgLoaded, setImgLoaded]           = useState(false);
+  const [error, setError]                   = useState<string | null>(null);
+  const [touchStartX, setTouchStartX]       = useState(0);
+  
 
   useEffect(() => {
     const load = async () => {
@@ -53,13 +54,19 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
           (a, b) => new Date(a.id.split('_')[0]).getTime() - new Date(b.id.split('_')[0]).getTime()
         );
         setAllImages(data);
-        console.log('NdviMapViewer: haettu kuvia:', data.length, 'kpl');
-        const years = [...new Set(data.map((img) => getYear(img.id.split('_')[0])))].sort((a, b) => b - a);
 
+        // Vuodet uusimmasta vanhimpaan
+        const years = [...new Set(data.map((img) => getYear(img.id.split('_')[0])))].sort((a, b) => b - a);
         setAvailableYears(years);
-        setImages(data);
-        setSelectedYear(years[0])
-        setIndex(data.length - 1);
+
+        
+        // Oletuksena uusin vuosi
+        const newestYear = years[0];
+        setSelectedYear(newestYear);
+
+        const filtered = data.filter((img) => getYear(img.id.split('_')[0]) === newestYear);
+        setImages(filtered);
+        setIndex(filtered.length - 1);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Haku epäonnistui');
       } finally {
@@ -71,9 +78,9 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
 
   // Suodata vuoden mukaan
   useEffect(() => {
-    const filtered = selectedYear === 'all'
-      ? allImages
-      : allImages.filter((img) => getYear(img.id.split('_')[0]) === selectedYear);
+    const filtered = allImages.filter(
+      (img) => getYear(img.id.split('_')[0]) === selectedYear
+    );
     setImages(filtered);
     setIndex(filtered.length - 1);
   }, [selectedYear, allImages]);
@@ -81,41 +88,36 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
   const prev = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
   const next = useCallback(() => setIndex((i) => Math.min(images.length - 1, i + 1)), [images.length]);
 
-  // Näppäimistönavigointi
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'ArrowLeft')  prev();
       if (e.key === 'ArrowRight') next();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [prev, next]);
 
-  // Swipe-navigointi
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStartX(e.touches[0].clientX);
-  };
-
+  const handleTouchStart = (e: React.TouchEvent) => setTouchStartX(e.touches[0].clientX);
   const handleTouchEnd = (e: React.TouchEvent) => {
     const diff = touchStartX - e.changedTouches[0].clientX;
-    if (diff > 50) next();   // pyyhkäisy vasemmalle → seuraava
-    if (diff < -50) prev();   // pyyhkäisy oikealle → edellinen
+    if (diff > 50)  next();
+    if (diff < -50) prev();
   };
+
+  
 
   useEffect(() => { setImgLoaded(false); }, [index]);
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
-  if (error) return <Alert severity="error">{error}</Alert>;
+  if (error)   return <Alert severity="error">{error}</Alert>;
   if (!images.length) return <Alert severity="info">Ei kuvia saatavilla.</Alert>;
 
-  const current = images[index];
+  const current   = images[index];
   const imageDate = current.id.split('_')[0];
-  const status = NDVI_COLOR_LABEL(current.average);
-  const isFirst = index === 0;
-  const isLast = index === images.length - 1;
+  const status    = NDVI_COLOR_LABEL(current.average);
+  const isFirst   = index === 0;
+  const isLast    = index === images.length - 1;
 
-
-  // <MenuItem value="all">Kaikki</MenuItem>
   return (
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: { md: '100%' } }}>
 
@@ -131,7 +133,7 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
             borderRadius: isFullscreen ? 0 : 2,
           }}>
 
-            {/* Vuosivalitsin — dropdown, skaalautuu rajattomasti */}
+            {/* Vuosivalitsin + kalenteripainike */}
             <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 2 }}>
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <InputLabel>Vuosi</InputLabel>
@@ -140,7 +142,6 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
                   label="Vuosi"
                   onChange={(e) => setSelectedYear(e.target.value as number)}
                 >
-
                   {availableYears.map((y) => (
                     <MenuItem key={y} value={y}>{y}</MenuItem>
                   ))}
@@ -149,14 +150,14 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
 
               <Tooltip title="Valitse päivämäärä kalenterista">
                 <IconButton
-                  size="small"
-                  onClick={() => setCalendarOpen(true)}
-                  color={calendarOpen ? 'primary' : 'default'}
+                  size="small"                  
+                  color="primary"
                 >
                   <CalendarMonthIcon fontSize="small" />
                 </IconButton>
               </Tooltip>
-              <Typography variant="caption" color="text.secondary">
+
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 'auto' }}>
                 {images.length} kuvaa
               </Typography>
             </Box>
@@ -186,12 +187,11 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
                 alt={`NDVI ${fmt(imageDate)}`}
                 onLoad={() => setImgLoaded(true)}
                 sx={{
-                  width: '100%',
-                  height: '100%',
+                  width: '100%', height: '100%',
                   objectFit: 'contain',
                   opacity: imgLoaded ? 1 : 0,
                   transition: 'opacity 0.3s',
-                  pointerEvents: 'none',   // ← ei häiritse swipeä
+                  pointerEvents: 'none',
                 }}
               />
               <Chip
@@ -199,17 +199,15 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
                 size="small"
                 sx={{
                   position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)',
-                  bgcolor: 'rgba(0,0,0,0.65)', color: '#fff', fontWeight: 600, backdropFilter: 'blur(4px)',
-                  pointerEvents: 'none',
+                  bgcolor: 'rgba(0,0,0,0.65)', color: '#fff', fontWeight: 600,
+                  backdropFilter: 'blur(4px)', pointerEvents: 'none',
                 }}
               />
             </Box>
 
             {/* Navigointipalkki */}
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1.5, borderTop: 1, borderColor: 'divider' }}>
-              <IconButton onClick={prev} disabled={isFirst} size="small" aria-label="Edellinen">
-                <ArrowBackIosNewIcon fontSize="small" />
-              </IconButton>
+              <IconButton onClick={prev} disabled={isFirst} size="small"><ArrowBackIosNewIcon fontSize="small" /></IconButton>
               <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
                 {images.slice(Math.max(0, index - 10), index + 10).map((img, i) => {
                   const realIdx = Math.max(0, index - 10) + i;
@@ -225,15 +223,12 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
                   );
                 })}
               </Box>
-              <IconButton onClick={next} disabled={isLast} size="small" aria-label="Seuraava">
-                <ArrowForwardIosIcon fontSize="small" />
-              </IconButton>
+              <IconButton onClick={next} disabled={isLast} size="small"><ArrowForwardIosIcon fontSize="small" /></IconButton>
             </Box>
 
             <Typography variant="caption" color="text.secondary" textAlign="center" pb={1}>
-              {index + 1} / {images.length} {typeof selectedYear === 'number' ? `· ${selectedYear}` : ''}
+              {index + 1} / {images.length} · {selectedYear}
             </Typography>
-
           </Paper>
         )}
       </FullscreenablePanel>
@@ -259,9 +254,9 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
 
         {[
           { label: 'Keskiarvo (Avg)', value: current.average },
-          { label: 'Maksimi (Max)', value: current.max },
-          { label: 'Minimi (Min)', value: current.min },
-          { label: 'Hajonta (Std)', value: current.std },
+          { label: 'Maksimi (Max)',   value: current.max },
+          { label: 'Minimi (Min)',    value: current.min },
+          { label: 'Hajonta (Std)',   value: current.std },
         ].map(({ label, value }) => (
           <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Typography variant="body2" color="text.secondary">{label}</Typography>
@@ -278,14 +273,11 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
 
         <Box sx={{ mt: 'auto' }}>
           <Typography variant="caption" color="text.secondary">
-            {images.length} kuvaa
-            {typeof selectedYear === 'number'
-              ? ` vuodelta ${selectedYear}`
-              : ' saatavilla'}
+            {images.length} kuvaa vuodelta {selectedYear}
           </Typography>
-
         </Box>
       </Paper>
+      
     </Box>
   );
 }

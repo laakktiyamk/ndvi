@@ -15,20 +15,6 @@ function fixGeoJSON(text: string): string {
   return text;
 }
 
-/*async function validateGeoJSON(geojson: object): Promise<{ valid: boolean; errors: string[] }> {
-  try {
-    const res = await axios.post(
-      'https://ypv1x47p1g.execute-api.eu-north-1.amazonaws.com/validategeojson',
-      { geojson }
-    );
-    return res.data;
-  } catch {
-    return { valid: false, errors: ['Validointipalvelu ei vastannut'] };
-  }
-}*/
-
-
-
 async function validateGeoJSON(geojson: object): Promise<{ valid: boolean; errors: string[] }> {
   try {
     // Korjataan kiertosuunta ennen validointia, ettei hint valita turhaan

@@ -130,10 +130,12 @@ export const getFields = async (
 ): Promise<void> => {
   try {
     const userId = getUserId(req);
+    console.log('####### userId tokenista:', userId);
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
+    console.log('Fetching fields for userId:', userId);
     const data = await mongodb.getAllDateSets(userId);
     res.status(200).json(data);
   } catch (err: unknown) {

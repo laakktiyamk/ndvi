@@ -19,6 +19,7 @@ interface AppState {
   geoJsonInput: string;
   validGeoJson: object | null;
   startDate: string;
+  resetFields: () => void;
 
   fetchFields: () => Promise<void>;
   setSelectedField: (id: string | null) => void;
@@ -87,4 +88,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   setGeoJsonInput: (text) => set({ geoJsonInput: text }),
   setValidGeoJson: (gj)   => set({ validGeoJson: gj }),
   setStartDate:    (d)    => set({ startDate: d }),
+  resetFields: () => set({
+  fields: [],
+  fieldsFetched: false,
+  fieldsError: null,
+  selectedFieldId: null,
+  recentFieldIds: [],
+  imageCache: {},
+  imagesLoading: {},
+}),
 }));

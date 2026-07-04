@@ -77,20 +77,29 @@ export const saveDates = async (
   userId: string = ''
 ): Promise<boolean> => {
   try {
+
+    console.log("saveDates called with id:", id, "userId:", userId);
+    const update: any = {
+      $set: { id, dates: data, geometry, area, name },
+    };
+
+    if (userId) {
+      update.$addToSet = { userIds: userId };
+    }
+
     await Dates.findOneAndUpdate(
       { id },
-      {
-        $set:      { id, dates: data, geometry, area, name },
-        $addToSet: { userIds: userId },   // ← lisää userId arrayhin, ei duplikaatteja
-      },
+      update,
       { upsert: true }
     );
+
     return true;
   } catch (err: any) {
     console.error("Error saving dates:", err.message);
     return false;
   }
 };
+
 
 /**
  * updateDates — lisätty userId $addToSet:lla
@@ -164,12 +173,25 @@ export const getDates = async (id: string): Promise<IDates | null> => {
  * Retrieves all date sets.
  */
 
+/*
 export const getAllDateSets = async (userId: string): Promise<IDates[]> => {
+
+  console.log("###### getAllDateSets called with userId:", userId);
+
   return await Dates.find(
     { userIds: userId },              // ← vain käyttäjän omat lohkot
     { _id: 0, __v: 0, geometry: 0 }
   );
+};*/
+
+export const getAllDateSets = async (userId: string): Promise<IDates[]> => {
+  console.log('haetaan userId:', userId);
+  const result = await Dates.find({ userIds: userId }, { _id: 0, __v: 0, geometry: 0 });
+  console.log('löytyi:', result.length);
+  return result;
 };
+
+
 /**
  * Saves user data.
  */

@@ -51,8 +51,8 @@ export default function FieldsPage() {
 
   const selectedField = fields.find((f) => f.id === selectedFieldId);
 
-  console.log('selectedField:', selectedField);
-  console.log('sentinelid välitetään:', selectedField?.id);
+  //console.log('selectedField:', selectedField);
+  // console.log('sentinelid välitetään:', selectedField?.id);
 
   const renderViewer = () => {
     if (!selectedField) return null;

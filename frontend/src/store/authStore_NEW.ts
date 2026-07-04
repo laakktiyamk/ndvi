@@ -12,6 +12,7 @@ interface AuthState {
   token: string | null;
   user: User | null;
   isAuthenticated: boolean;
+
   setAuth: (token: string, user: User) => void;
   logout: () => void;
 }
@@ -22,12 +23,21 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       isAuthenticated: false,
-      setAuth: (token, user) => set({ token, user, isAuthenticated: true }),
+
+      setAuth: (token, user) => {
+        set({ token, user, isAuthenticated: true });
+      },
+
       logout: () => {
+        // Poistetaan vanhat manuaaliset avaimet
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         useAppStore.getState().resetFields();
         set({ token: null, user: null, isAuthenticated: false });
       },
     }),
-    { name: 'auth-storage' }
+    {
+      name: 'auth-storage',  // localStorage-avain
+    }
   )
 );

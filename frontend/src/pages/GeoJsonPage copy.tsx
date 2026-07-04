@@ -4,12 +4,10 @@ import {
   Box, Typography, Paper, Alert,
   TextField, Stack, CircularProgress,
   Divider, Chip,
-  Accordion, AccordionSummary, AccordionDetails,
 } from '@mui/material';
 import MapIcon from '@mui/icons-material/Map';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import GrassIcon from '@mui/icons-material/Grass';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GeoJsonInput from '../components/ndvi/GeoJsonInput';
 import useFetchDatesList from '../hooks/useFetchDatesList';
 import { useAppStore } from '../store/appStore';
@@ -32,14 +30,15 @@ export default function GeoJsonPage() {
     geoJsonInput, setGeoJsonInput,
     setValidGeoJson,
     startDate, setStartDate,
-    resetFields,
+    resetFields,  // ← lisää tämä
   } = useAppStore();
 
-  const [submittedGeoJson, setSubmittedGeoJson] = useState<object | null>(null);
-  const [fieldInfo, setFieldInfo]               = useState<FieldInfo | null>(null);
-  const [fieldInfoLoading, setFieldInfoLoading] = useState(false);
-  const [accordionOpen, setAccordionOpen]       = useState(true);
 
+  const [submittedGeoJson, setSubmittedGeoJson] = useState<object | null>(null);
+  const [fieldInfo, setFieldInfo] = useState<FieldInfo | null>(null);
+  const [fieldInfoLoading, setFieldInfoLoading] = useState(false);
+
+  // name välitetään hookille → servicelle → backendille → tallennetaan kantaan
   const { data, loading, error } = useFetchDatesList(
     submittedGeoJson,
     startDate,
@@ -48,6 +47,7 @@ export default function GeoJsonPage() {
   );
 
   if (data && data.dates?.length > 0) {
+
     resetFields();
     navigate('/fields', { state: { fromGeoJson: true, dates: data.dates } });
   }
@@ -56,12 +56,13 @@ export default function GeoJsonPage() {
     setValidGeoJson(gj);
     setFieldInfo(null);
     if (!gj) return;
+
     setFieldInfoLoading(true);
     try {
       const res = await apiClient.post<FieldInfo>('/api/fields/info', { geometry: gj });
       setFieldInfo(res.data);
     } catch {
-      // optionaalinen
+      // info on optionaalinen — ei virhettä käyttäjälle
     } finally {
       setFieldInfoLoading(false);
     }
@@ -74,62 +75,39 @@ export default function GeoJsonPage() {
         <Typography variant="h5" fontWeight={700}>GeoJSON — Hae NDVI-kuvat</Typography>
       </Box>
 
-      {/* Accordion — sulkeutuu kun haku käynnistyy */}
-      <Accordion
-        expanded={accordionOpen}
-        onChange={(_, expanded) => setAccordionOpen(expanded)}
-        sx={{ mb: 2 }}
-      >
-        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography fontWeight={500}>GeoJSON-syöte</Typography>
-            {fieldInfo?.name && (
-              <Chip label={fieldInfo.name} size="small" color="primary" variant="outlined" />
-            )}
-          </Box>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Stack spacing={2}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                label="Alkupäivä"
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-                size="small"
-              />
-              <TextField
-                label="Loppupäivä"
-                type="date"
-                value={today}
-                disabled
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-                size="small"
-                helperText="Aina kuluva päivä"
-              />
-            </Stack>
-
-            <GeoJsonInput
-              initialValue={geoJsonInput}
-              onInputChange={setGeoJsonInput}
-              onValid={handleValid}
-              onSubmit={(gj) => {
-                setSubmittedGeoJson(gj);
-                setAccordionOpen(false);
-              }}
-              loading={loading}
+      <Paper sx={{ p: 3 }}>
+        <Stack spacing={2}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <TextField
+              label="Alkupäivä"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+            />
+            <TextField
+              label="Loppupäivä"
+              type="date"
+              value={today}
+              disabled
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+              helperText="Aina kuluva päivä"
             />
           </Stack>
-        </AccordionDetails>
-      </Accordion>
 
-      {/* Tulokset */}
-      <Paper sx={{ p: 2.5 }}>
-        <Stack spacing={2}>
+          <GeoJsonInput
+            initialValue={geoJsonInput}
+            onInputChange={setGeoJsonInput}
+            onValid={handleValid}
+            onSubmit={(gj) => setSubmittedGeoJson(gj)}
+            loading={loading}
+          />
 
+          {/* Sijaintitietojen lataus */}
           {fieldInfoLoading && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CircularProgress size={16} />
@@ -139,8 +117,9 @@ export default function GeoJsonPage() {
             </Box>
           )}
 
+          {/* Tunnistettu sijainti */}
           {fieldInfo && (
-            <Box>
+            <Box sx={{ bgcolor: 'background.default', borderRadius: 2, p: 2 }}>
               <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={1}>
                 TUNNISTETTU SIJAINTI
               </Typography>
@@ -182,13 +161,6 @@ export default function GeoJsonPage() {
               </Typography>
             </Box>
           )}
-
-          {!fieldInfo && !loading && !error && (
-            <Typography variant="body2" color="text.secondary">
-              Liitä GeoJSON yllä olevaan kenttään aloittaaksesi.
-            </Typography>
-          )}
-
         </Stack>
       </Paper>
     </Box>
