@@ -10,9 +10,11 @@ import FullscreenablePanel from '../shared/FullscreenablePanel';
 import { fetchAllImages } from '../../services/ndviService';
 import type { NdviImage } from '../../types';
 
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+//import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
-import Tooltip from '@mui/material/Tooltip';
+//import Tooltip from '@mui/material/Tooltip';
+import NdviDatePicker from './NdviDatePicker';
+
 
 interface Props {
   sentinelid: string;
@@ -35,7 +37,7 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
   const [allImages, setAllImages] = useState<NdviImage[]>([]);
   const [images, setImages] = useState<NdviImage[]>([]);
   const [selectedYear, setSelectedYear] = useState<number | ''>('');
-  const [calendarOpen, setCalendarOpen] = useState(false);
+
 
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
@@ -43,6 +45,9 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [touchStartX, setTouchStartX] = useState(0);
+
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+
 
   useEffect(() => {
     const load = async () => {
@@ -148,15 +153,13 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
                 </Select>
               </FormControl>
 
-              <Tooltip title="Valitse päivämäärä kalenterista">
-                <IconButton
-                  size="small"
-                  onClick={() => setCalendarOpen(true)}
-                  color={calendarOpen ? 'primary' : 'default'}
-                >
-                  <CalendarMonthIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <NdviDatePicker
+                value={selectedDate}
+                onChange={(date) => {
+                  console.log(date);
+                  setSelectedDate(date);
+                }}
+              />
               <Typography variant="caption" color="text.secondary">
                 {images.length} kuvaa
               </Typography>
@@ -231,8 +234,16 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
               </IconButton>
             </Box>
 
-            <Typography variant="caption" color="text.secondary" textAlign="center" pb={1}>
-              {index + 1} / {images.length} {typeof selectedYear === 'number' ? `· ${selectedYear}` : ''}
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                textAlign: 'center',
+                pb: 1,
+              }}
+            >
+              {index + 1} / {images.length}
+              {typeof selectedYear === 'number' ? ` · ${selectedYear}` : ''}
             </Typography>
 
           </Paper>
@@ -243,7 +254,12 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
       <Paper sx={{ flex: { md: '0 0 35%' }, p: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {fieldName && (
           <>
-            <Typography variant="h6" fontWeight={700}>{fieldName}</Typography>
+            <Typography
+              variant="h6"
+              sx={{ fontWeight: 700 }}
+            >
+              {fieldName}
+            </Typography>
             <Divider />
           </>
         )}
@@ -252,7 +268,9 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
           <Typography variant="caption" color="text.secondary">Tilanne</Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
             <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: status.color }} />
-            <Typography fontWeight={600}>{status.label}</Typography>
+            <Typography sx={{ fontWeight: 600 }}>
+              {status.label}
+            </Typography>
           </Box>
         </Box>
 
@@ -273,7 +291,16 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
         <Divider />
 
         <Box>
-          <Typography variant="caption" color="text.secondary" display="block" mb={1}>Navigointi</Typography>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              display: 'block',
+              mb: 1,
+            }}
+          >
+            Navigointi
+          </Typography>
           <Typography variant="caption" color="text.secondary">← → näppäimet · nuolipainikkeet · pyyhkäisy</Typography>
         </Box>
 

@@ -3,7 +3,8 @@ import {
   Box, TextField, Button, Alert, Typography,
   CircularProgress, Collapse,
 } from '@mui/material';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+
+import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import { hint } from "@mapbox/geojsonhint";
 
 import rewind from "@turf/rewind";
@@ -109,8 +110,14 @@ export default function GeoJsonInput({
         onChange={handleChange}
         placeholder='Esimerkki: {"type":"Polygon","coordinates":[[[22.39,61.96],...]]}'
         error={!!jsonError || geojsonErrors.length > 0}
-        InputProps={{
-          sx: { fontFamily: 'monospace', fontSize: '0.8rem', alignItems: 'flex-start' }
+        slotProps={{
+          input: {
+            sx: {
+              fontFamily: 'monospace',
+              fontSize: '0.8rem',
+              alignItems: 'flex-start',
+            },
+          },
         }}
       />
 
@@ -127,7 +134,12 @@ export default function GeoJsonInput({
 
       <Collapse in={geojsonErrors.length > 0}>
         <Alert severity="warning" sx={{ py: 0.5 }}>
-          <Typography variant="caption" fontWeight={600}>GeoJSON-ongelmat:</Typography>
+          <Typography
+            variant="caption"
+            sx={{ fontWeight: 600 }}
+          >
+            GeoJSON-ongelmat:
+          </Typography>
           <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
             {geojsonErrors.map((err, i) => (
               <li key={i}><Typography variant="caption">{err}</Typography></li>
@@ -137,7 +149,7 @@ export default function GeoJsonInput({
       </Collapse>
 
       <Collapse in={isValid}>
-        <Alert severity="success" icon={<CheckCircleOutlineIcon fontSize="small" />} sx={{ py: 0.5 }}>
+        <Alert severity="success" icon={<CheckCircleOutlinedIcon fontSize="small" />} sx={{ py: 0.5 }}>
           Validi GeoJSON
         </Alert>
       </Collapse>
