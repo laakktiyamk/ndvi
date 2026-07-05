@@ -14,4 +14,6 @@ router.get("/image/:sentinelid", ndviControllers.image);
 //router.post("/weather", ndviControllers.weather);
 router.get("/aois", ndviControllers.AOIs);
 
+router.post("/images", ndviControllers.images);
+
 export default router;

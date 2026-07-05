@@ -298,3 +298,33 @@ export const image = async (req: Request, res: Response, next: NextFunction): Pr
     res.status(200).send({ ..._data, image: { ..._data.image, dataUrl } });
   }
 };
+
+export const images = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  const { ids } = req.body;
+
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: 'ids array required' });
+    return;
+  }
+
+  try {
+    const rawData: IImage[] = await mongodb.getImagesByIds(ids);
+    
+    // Muodostetaan Record<sentinelid, image>
+    const imageMap = rawData.reduce((acc, item) => {
+      acc[item.id] = {
+        ...item,
+        image: {
+          ...item.image,
+          dataUrl: `data:image/png;base64,${Buffer.from(item.image.dataUrl.buffer).toString('base64')}`,
+        },
+      };
+      return acc;
+    }, {} as Record<string, any>);
+
+    res.status(200).json(imageMap);
+  } catch (e: unknown) {
+    if (e instanceof Error) console.error(e.message);
+    res.status(500).json({ error: 'Server error' });
+  }
+};

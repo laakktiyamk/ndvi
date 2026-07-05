@@ -314,6 +314,19 @@ export const deleteImage = async (id: string): Promise<any> => {
   }
 };
 
+
+export const getImagesByIds = async (ids: string[]): Promise<IImage[]> => {
+  try {
+    return await Image.find(
+      { id: { $in: ids } },
+      { _id: 0, __v: 0 }
+    ).lean<IImage[]>();
+  } catch (err) {
+    console.error("ERROR getImagesByIds:", err);
+    return [];
+  }
+};
+
 /**
  * Clears all collections in the database.
  */
