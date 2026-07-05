@@ -11,10 +11,21 @@ import { DateCalendar } from "@mui/x-date-pickers/DateCalendar";
 
 import { fi } from "date-fns/locale";
 
-export default function NdviDatePicker() {
+interface Props {
+    value: Date | null;
+    selectedYear: number;
+    onChange: (date: Date | null) => void;
+}
+
+export default function NdviDatePicker({
+    value,
+    selectedYear,
+    onChange,
+}: Props) {
 
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
 
+    console.log("NdviDatePicker render", { value, selectedYear });
     return (
         <LocalizationProvider
             dateAdapter={AdapterDateFns}
@@ -36,7 +47,15 @@ export default function NdviDatePicker() {
                     horizontal: "left",
                 }}
             >
-                <DateCalendar />
+                <DateCalendar
+                    value={value}
+                    minDate={new Date(selectedYear, 0, 1)}
+                    maxDate={new Date(selectedYear, 11, 31)}
+                    onChange={(newValue) => {
+                        onChange(newValue);
+                        setAnchorEl(null);
+                    }}
+                />
             </Popover>
 
         </LocalizationProvider>

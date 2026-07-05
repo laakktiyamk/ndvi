@@ -36,7 +36,12 @@ const getYear = (date: string) => new Date(date).getFullYear();
 export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
   const [allImages, setAllImages] = useState<NdviImage[]>([]);
   const [images, setImages] = useState<NdviImage[]>([]);
-  const [selectedYear, setSelectedYear] = useState<number | ''>('');
+
+  const currentYear = new Date().getFullYear();
+
+  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  //const [selectedYear, setSelectedYear] = useState<number | ''>('');
+
 
 
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -64,7 +69,13 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
 
         setAvailableYears(years);
         setImages(data);
-        setSelectedYear(years[0])
+        //       setSelectedYear(years[0])
+
+
+        if (years.length > 0) {
+          setSelectedYear(years[0]);
+        }
+
         setIndex(data.length - 1);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Haku epäonnistui');
@@ -143,8 +154,8 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
                 <InputLabel>Vuosi</InputLabel>
                 <Select
                   value={selectedYear}
-                  label="Vuosi"
-                  onChange={(e) => setSelectedYear(e.target.value as number)}
+                  label="Vuosi"                  
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
                 >
 
                   {availableYears.map((y) => (
@@ -155,6 +166,7 @@ export default function NdviMapViewer({ sentinelid, fieldName }: Props) {
 
               <NdviDatePicker
                 value={selectedDate}
+                selectedYear={selectedYear}
                 onChange={(date) => {
                   console.log(date);
                   setSelectedDate(date);
