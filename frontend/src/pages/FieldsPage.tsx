@@ -43,10 +43,15 @@ export default function FieldsPage() {
   const [listOpen, setListOpen] = useState(true);
 
   useEffect(() => { fetchFields(); }, [fetchFields]);
-
+  /*
+    const handleSelectField = (id: string) => {
+      setSelectedField(id);
+      if (window.innerWidth < 900) setListOpen(false);
+    };
+  */
   const handleSelectField = (id: string) => {
     setSelectedField(id);
-    if (window.innerWidth < 900) setListOpen(false);
+    setListOpen(false);  // ← poistetaan if-ehto, sulkeutuu aina
   };
 
   const selectedField = fields.find((f) => f.id === selectedFieldId);
