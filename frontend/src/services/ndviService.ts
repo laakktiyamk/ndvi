@@ -12,12 +12,14 @@ export interface DatesResponse {
 export const getDatesForGeometry = async (
   geometry: object,
   startDate: string,
-  endDate: string
+  endDate: string,
+  name?: string
 ): Promise<DatesResponse> => {
   const res = await apiClient.post<DatesResponse>('/api/ndvi/dates', {
     geometry,
     start_date: startDate,
     end_date: endDate,
+    name,
   });
   return res.data;
 };

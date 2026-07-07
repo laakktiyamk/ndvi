@@ -35,7 +35,8 @@ interface AppState {
   fetchImagesForGeometry: (
     geometry: object,
     startDate: string,
-    endDate: string
+    endDate: string,
+    name?: string
   ) => Promise<string | null>; // palauttaa uuden field id:n (geometryHash) tai null virheessä
   setGeoJsonInput: (text: string) => void;
   setValidGeoJson: (gj: object | null) => void;
@@ -118,12 +119,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  fetchImagesForGeometry: async (geometry, startDate, endDate) => {
+  fetchImagesForGeometry: async (geometry, startDate, endDate,name) => {
     if (get().imagesLoading) return null;
     set({ imagesLoading: true, imagesError: null });
     try {
       // 1. Hae dates raa'alle geometrialle — backend luo/päivittää dokumentin ja palauttaa id:n (geometryHash)
-      const datesRes = await getDatesForGeometry(geometry, startDate, endDate);
+      const datesRes = await getDatesForGeometry(geometry, startDate, endDate,name);
       const ids = datesRes.dates.map((d) => d.sentinelid);
 
       // 2. Hae kuvat niillä id:llä
@@ -136,12 +137,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         generationtime: d.generationtime,
         stats: d.stats,
         image: imagesById[d.sentinelid],
+        name: name, // Lisätään nimi, jos annettu
       }));
 
       set({
         activeGeometryHash: datesRes.id,
         ndviEntries: merged,
         imagesLoading: false,
+
         // Pakota fields-lista hakemaan uudestaan, koska uusi/mahdollisesti muuttunut AOI syntyi
         fieldsFetched: false,
       });

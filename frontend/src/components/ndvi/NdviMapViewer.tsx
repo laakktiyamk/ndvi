@@ -7,7 +7,7 @@ import {
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import FullscreenablePanel from '../shared/FullscreenablePanel';
-import type { MergedNdviEntry } from '../../types';
+//import type { MergedNdviEntry } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import NdviDatePicker from './NdviDatePicker';
 

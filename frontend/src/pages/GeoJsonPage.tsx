@@ -61,7 +61,8 @@ export default function GeoJsonPage() {
     setAccordionOpen(false);
     setNoDataFound(false);
 
-    const newId = await fetchImagesForGeometry(gj, startDate, today);
+    const name = fieldInfo?.name ?? '';
+    const newId = await fetchImagesForGeometry(gj, startDate, today, name);
 
     if (newId) {
       const hasEntries = useAppStore.getState().ndviEntries.length > 0;
