@@ -1,21 +1,13 @@
 // ─── Field ───────────────────────────────────────────
-export interface IDateItem {
-  generationtime: string;
-  sentinelid: string;
-  stats: {
-    average: number;
-    max: number;
-    min: number;
-    std: number;
-  };
-}
-
 export interface IField {
   _id: string;
-  id: string;          // geometrian hash — käytetään kuvien hakuun
+  id: string;                // geometrian hash — käytetään kuvien/dates-hakuun
   name: string;
   area: number;
-  dates: IDateItem[];
+  geometry: {
+    type: 'Polygon' | 'MultiPolygon';
+    coordinates: unknown[];
+  };
 }
 
 // ─── NDVI ────────────────────────────────────────────
@@ -60,4 +52,24 @@ export interface IWeather {
   precipitation_sum: number;
   windspeed_10m_max: number;
   createdAt: string;
+}
+
+// ─── Dates (per-päivä stats + sentinelid) ────────────
+export interface DateEntry {
+  generationtime: string;
+  sentinelid: string;
+  stats: {
+    average: number;
+    max: number;
+    min: number;
+    std: number;
+  };
+}
+
+// ─── Yhdistetty näkymämalli: dates + images ──────────
+export interface MergedNdviEntry {
+  sentinelid: string;
+  generationtime: string;
+  stats: { average: number; max: number; min: number; std: number };
+  image: NdviImage | undefined;
 }

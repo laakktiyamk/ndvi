@@ -223,9 +223,9 @@ export const AOIs = async (req: Request, res: Response, next: NextFunction): Pro
 export const dates = async (req: SentinelRequest, res: Response, next: NextFunction): Promise<void> => {
   globalAuthToken = req.authToken;
   const startTime = performance.now();
-  let updateDbFlag = false;
+  //let updateDbFlag = false;
 
-  try { updateDbFlag = req.body.updateDb; } catch (e) { updateDbFlag = false; }
+  //try { updateDbFlag = req.body.updateDb; } catch (e) { updateDbFlag = false; }
 
   let geometry: any = null;
   try {
@@ -247,15 +247,15 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
   await getWeatherFromDbOrFetch(geometry, fromTime, toTime);
   console.log("Weather saved in (sec): ", (performance.now() - wStart) / 1000);
 
-  if (updateDbFlag) {
-    res.status(222).send("done");
-  } else {
+  //if (updateDbFlag) {
+    //res.status(222).send("done");
+  //} else {
     if (data) {
       res.status(200).send(data);
     } else {
       res.status(404).send("no data available");
     }
-  }
+  //}
 };
 
 // ============================================================

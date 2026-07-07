@@ -11,7 +11,6 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import GrassIcon from '@mui/icons-material/Grass';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GeoJsonInput from '../components/ndvi/GeoJsonInput';
-import useFetchDatesList from '../hooks/useFetchDatesList';
 import { useAppStore } from '../store/appStore';
 import { apiClient } from '../api/client';
 
@@ -32,25 +31,16 @@ export default function GeoJsonPage() {
     geoJsonInput, setGeoJsonInput,
     setValidGeoJson,
     startDate, setStartDate,
-    resetFields,
+    setSelectedField,
+    fetchImagesForGeometry,
+    imagesLoading: loading,
+    imagesError: error,
   } = useAppStore();
 
-  const [submittedGeoJson, setSubmittedGeoJson] = useState<object | null>(null);
-  const [fieldInfo, setFieldInfo]               = useState<FieldInfo | null>(null);
+  const [fieldInfo, setFieldInfo] = useState<FieldInfo | null>(null);
   const [fieldInfoLoading, setFieldInfoLoading] = useState(false);
-  const [accordionOpen, setAccordionOpen]       = useState(true);
-
-  const { data, loading, error } = useFetchDatesList(
-    submittedGeoJson,
-    startDate,
-    today,
-    fieldInfo?.name ?? '',
-  );
-
-  if (data && data.dates?.length > 0) {
-    resetFields();
-    navigate('/fields', { state: { fromGeoJson: true, dates: data.dates } });
-  }
+  const [accordionOpen, setAccordionOpen] = useState(true);
+  const [noDataFound, setNoDataFound] = useState(false);
 
   const handleValid = async (gj: object | null) => {
     setValidGeoJson(gj);
@@ -67,11 +57,31 @@ export default function GeoJsonPage() {
     }
   };
 
+  const handleSubmit = async (gj: object) => {
+    setAccordionOpen(false);
+    setNoDataFound(false);
+
+    const newId = await fetchImagesForGeometry(gj, startDate, today);
+
+    if (newId) {
+      const hasEntries = useAppStore.getState().ndviEntries.length > 0;
+      if (hasEntries) {
+        setSelectedField(newId);
+        navigate('/fields', { state: { fromGeoJson: true } });
+      } else {
+        setNoDataFound(true);
+      }
+    }
+  };
+
   return (
     <Box sx={{ maxWidth: 640, mx: 'auto' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
         <MapIcon color="primary" />
-        <Typography variant="h5" fontWeight={700}>GeoJSON — Hae NDVI-kuvat</Typography>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
+          GeoJSON — Hae NDVI-kuvat
+        </Typography>
+
       </Box>
 
       {/* Accordion — sulkeutuu kun haku käynnistyy */}
@@ -82,7 +92,10 @@ export default function GeoJsonPage() {
       >
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography fontWeight={500}>GeoJSON-syöte</Typography>
+            <Typography sx={{ fontWeight: 500 }}>
+              GeoJSON-syöte
+            </Typography>
+
             {fieldInfo?.name && (
               <Chip label={fieldInfo.name} size="small" color="primary" variant="outlined" />
             )}
@@ -96,7 +109,11 @@ export default function GeoJsonPage() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
+                slotProps={{
+                  inputLabel: {
+                    shrink: true,
+                  },
+                }}
                 fullWidth
                 size="small"
               />
@@ -105,7 +122,11 @@ export default function GeoJsonPage() {
                 type="date"
                 value={today}
                 disabled
-                InputLabelProps={{ shrink: true }}
+                slotProps={{
+                  inputLabel: {
+                    shrink: true,
+                  },
+                }}
                 fullWidth
                 size="small"
                 helperText="Aina kuluva päivä"
@@ -116,10 +137,7 @@ export default function GeoJsonPage() {
               initialValue={geoJsonInput}
               onInputChange={setGeoJsonInput}
               onValid={handleValid}
-              onSubmit={(gj) => {
-                setSubmittedGeoJson(gj);
-                setAccordionOpen(false);
-              }}
+              onSubmit={handleSubmit}
               loading={loading}
             />
           </Stack>
@@ -141,9 +159,18 @@ export default function GeoJsonPage() {
 
           {fieldInfo && (
             <Box>
-              <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" mb={1}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{
+                  fontWeight: 600,
+                  display: 'block',
+                  mb: 1,
+                }}
+              >
                 TUNNISTETTU SIJAINTI
               </Typography>
+
               <Divider sx={{ mb: 1.5 }} />
               <Stack spacing={1}>
                 {fieldInfo.address && (
@@ -170,7 +197,7 @@ export default function GeoJsonPage() {
 
           {error && <Alert severity="error">{error}</Alert>}
 
-          {data && data.dates?.length === 0 && (
+          {noDataFound && (
             <Alert severity="info">Valitulle alueelle ei löytynyt NDVI-dataa.</Alert>
           )}
 
@@ -183,7 +210,7 @@ export default function GeoJsonPage() {
             </Box>
           )}
 
-          {!fieldInfo && !loading && !error && (
+          {!fieldInfo && !loading && !error && !noDataFound && (
             <Typography variant="body2" color="text.secondary">
               Liitä GeoJSON yllä olevaan kenttään aloittaaksesi.
             </Typography>

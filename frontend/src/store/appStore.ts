@@ -1,32 +1,46 @@
 import { create } from 'zustand';
-import type { IField, NdviImage } from '../types';
+import type { IField, MergedNdviEntry } from '../types';
 import { getFields } from '../services/fieldService';
-import { fetchAllImages } from '../services/ndviService';
+import { getDatesForGeometry, fetchImagesByIds } from '../services/ndviService';
 
 interface AppState {
+  // ── Fields (lista) ──────────────────────────────
   fields: IField[];
   fieldsFetched: boolean;
   fieldsLoading: boolean;
   fieldsError: string | null;
-
   selectedFieldId: string | null;
   recentFieldIds: string[];
 
-  imageCache: Record<string, NdviImage[]>;
-  imagesLoading: Record<string, boolean>;
+  // ── Aktiivinen AOI:n NDVI-data ───────────────────
+  activeGeometryHash: string | null;   // = field.id, kertoo mikä AOI on tällä hetkellä ladattu
+  ndviEntries: MergedNdviEntry[];      // dates + images yhdistettynä, järjestyksessä
+  imagesLoading: boolean;
+  imagesError: string | null;
 
-  // GeoJSON-lomake — endDate poistettu, aina tänään
+  // ── GeoJSON-syöte ────────────────────────────────
   geoJsonInput: string;
   validGeoJson: object | null;
   startDate: string;
-  resetFields: () => void;
 
+  // ── Actionit ─────────────────────────────────────
   fetchFields: () => Promise<void>;
   setSelectedField: (id: string | null) => void;
-  fetchImages: (sentinelid: string) => Promise<void>;
+  fetchImagesForField: (
+    field: IField,
+    startDate: string,
+    endDate: string
+  ) => Promise<void>;
+  // Käytetään GeoJSON-syötteelle, kun field.id ei ole vielä tiedossa etukäteen
+  fetchImagesForGeometry: (
+    geometry: object,
+    startDate: string,
+    endDate: string
+  ) => Promise<string | null>; // palauttaa uuden field id:n (geometryHash) tai null virheessä
   setGeoJsonInput: (text: string) => void;
   setValidGeoJson: (gj: object | null) => void;
   setStartDate: (d: string) => void;
+  resetFields: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -34,16 +48,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   fieldsFetched: false,
   fieldsLoading: false,
   fieldsError: null,
-
   selectedFieldId: null,
   recentFieldIds: [],
 
-  imageCache: {},
-  imagesLoading: {},
+  activeGeometryHash: null,
+  ndviEntries: [],
+  imagesLoading: false,
+  imagesError: null,
 
   geoJsonInput: '',
   validGeoJson: null,
-  startDate: '2020-01-01',
+  startDate: '2025-04-01',
 
   fetchFields: async () => {
     if (get().fieldsFetched) return;
@@ -67,34 +82,94 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
-  fetchImages: async (sentinelid) => {
-    if (get().imageCache[sentinelid]) return;
-    if (get().imagesLoading[sentinelid]) return;
-    set((state) => ({ imagesLoading: { ...state.imagesLoading, [sentinelid]: true } }));
+  fetchImagesForField: async (field, startDate, endDate) => {
+    // Jo aktiivinen tämä AOI → ei toisteta hakua
+    if (get().activeGeometryHash === field.id) return;
+    if (get().imagesLoading) return;
+
+    set({ imagesLoading: true, imagesError: null });
     try {
-      const res = await fetchAllImages(sentinelid);
-      const sorted = res.data.sort(
-        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-      );
-      set((state) => ({
-        imageCache: { ...state.imageCache, [sentinelid]: sorted },
-        imagesLoading: { ...state.imagesLoading, [sentinelid]: false },
+      // 1. Hae/päivitä dates (backend tsekkaa Mongon + täydentää Sentinel Hubista jos tarpeen)
+      const datesRes = await getDatesForGeometry(field.geometry, startDate, endDate);
+      const ids = datesRes.dates.map((d) => d.sentinelid);
+
+      // 2. Hae kuvat niillä id:llä — palauttaa jo valmiiksi Record<sentinelid, NdviImage>
+      const imagesRes = await fetchImagesByIds(ids);
+      const imagesById = imagesRes.data;
+
+      // 3. Yhdistä dates (päivämäärä + stats) ja images (pikselidata) yhdeksi listaksi
+      const merged: MergedNdviEntry[] = datesRes.dates.map((d) => ({
+        sentinelid: d.sentinelid,
+        generationtime: d.generationtime,
+        stats: d.stats,
+        image: imagesById[d.sentinelid],
       }));
-    } catch {
-      set((state) => ({ imagesLoading: { ...state.imagesLoading, [sentinelid]: false } }));
+
+      set({
+        activeGeometryHash: field.id,
+        ndviEntries: merged,
+        imagesLoading: false,
+      });
+    } catch (e: unknown) {
+      set({
+        imagesLoading: false,
+        imagesError: e instanceof Error ? e.message : 'Haku epäonnistui',
+      });
+    }
+  },
+
+  fetchImagesForGeometry: async (geometry, startDate, endDate) => {
+    if (get().imagesLoading) return null;
+    set({ imagesLoading: true, imagesError: null });
+    try {
+      // 1. Hae dates raa'alle geometrialle — backend luo/päivittää dokumentin ja palauttaa id:n (geometryHash)
+      const datesRes = await getDatesForGeometry(geometry, startDate, endDate);
+      const ids = datesRes.dates.map((d) => d.sentinelid);
+
+      // 2. Hae kuvat niillä id:llä
+      const imagesRes = await fetchImagesByIds(ids);
+      const imagesById = imagesRes.data;
+
+      // 3. Yhdistä
+      const merged: MergedNdviEntry[] = datesRes.dates.map((d) => ({
+        sentinelid: d.sentinelid,
+        generationtime: d.generationtime,
+        stats: d.stats,
+        image: imagesById[d.sentinelid],
+      }));
+
+      set({
+        activeGeometryHash: datesRes.id,
+        ndviEntries: merged,
+        imagesLoading: false,
+        // Pakota fields-lista hakemaan uudestaan, koska uusi/mahdollisesti muuttunut AOI syntyi
+        fieldsFetched: false,
+      });
+
+      return datesRes.id;
+    } catch (e: unknown) {
+      set({
+        imagesLoading: false,
+        imagesError: e instanceof Error ? e.message : 'Haku epäonnistui',
+      });
+      return null;
     }
   },
 
   setGeoJsonInput: (text) => set({ geoJsonInput: text }),
-  setValidGeoJson: (gj)   => set({ validGeoJson: gj }),
-  setStartDate:    (d)    => set({ startDate: d }),
-  resetFields: () => set({
-  fields: [],
-  fieldsFetched: false,
-  fieldsError: null,
-  selectedFieldId: null,
-  recentFieldIds: [],
-  imageCache: {},
-  imagesLoading: {},
-}),
+  setValidGeoJson: (gj) => set({ validGeoJson: gj }),
+  setStartDate: (d) => set({ startDate: d }),
+
+  resetFields: () =>
+    set({
+      fields: [],
+      fieldsFetched: false,
+      fieldsError: null,
+      selectedFieldId: null,
+      recentFieldIds: [],
+      activeGeometryHash: null,
+      ndviEntries: [],
+      imagesLoading: false,
+      imagesError: null,
+    }),
 }));

@@ -109,7 +109,7 @@ export const updateDates = async (id: string, newItem: any[], userId: string = '
     await Dates.findOneAndUpdate(
       { id },
       {
-        $push:     { dates: { $each: newItem, $position: 0 } },
+        $push: { dates: { $each: newItem, $position: 0 } },
         $addToSet: { userIds: userId },
       },
       { returnDocument: 'after' }
@@ -184,9 +184,11 @@ export const getAllDateSets = async (userId: string): Promise<IDates[]> => {
 };*/
 
 export const getAllDateSets = async (userId: string): Promise<IDates[]> => {
-  console.log('haetaan userId:', userId);
-  const result = await Dates.find({ userIds: userId }, { _id: 0, __v: 0, geometry: 0 });
-  console.log('löytyi:', result.length);
+
+  const result = await Dates.find(
+    { userIds: userId },
+    { _id: 0, __v: 0, dates: 0 }
+  );
   return result;
 };
 
@@ -287,7 +289,7 @@ export const getImage = async (id: string): Promise<IImage | null> => {
  */
 
 
-  
+
 
 export const getAllImages = async (search: string): Promise<IImage[]> => {
   try {
