@@ -73,19 +73,26 @@ export default function NdviDatePicker({
                                 isSameDay(d, props.day)
                             );
                             return (
-                                <Box sx={{ position: "relative" }}>
-                                    <PickerDay {...props} sx={isAvailable ? { fontWeight: "bold" } : undefined} />
-                                    {isAvailable && !props.selected && (
+                                <Box sx={{ position: 'relative' }}>
+                                    <PickerDay
+                                        {...props}
+                                        sx={isAvailable ? { fontWeight: 'bold' } : undefined}
+                                    />
+                                    {isAvailable && !props.selected && !props.outsideCurrentMonth && (
                                         <Box
                                             sx={{
-                                                position: "absolute",
+                                                position: 'absolute',
                                                 bottom: 2,
-                                                left: "50%",
-                                                transform: "translateX(-50%)",
-                                                width: 4,
-                                                height: 4,
-                                                borderRadius: "50%",
-                                                bgcolor: "primary.main",
+                                                left: '50%',
+                                                transform: 'translateX(-50%)',
+                                                width: 28,
+                                                height: 28,
+                                                borderRadius: '50%',
+                                                border: '2px solid',
+                                                borderColor: 'primary.main',
+                                                pointerEvents: 'none',
+                                                top: '50%',
+                                                marginTop: '-14px',
                                             }}
                                         />
                                     )}
