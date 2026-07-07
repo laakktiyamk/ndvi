@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box, Paper, Typography, IconButton, Chip,
   CircularProgress, Alert, Skeleton, Divider,
@@ -7,7 +7,6 @@ import {
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import FullscreenablePanel from '../shared/FullscreenablePanel';
-//import type { MergedNdviEntry } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import NdviDatePicker from './NdviDatePicker';
 
@@ -35,24 +34,22 @@ export default function NdviMapViewer({ fieldId, fieldName }: Props) {
   const [index, setIndex] = useState(0);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   const { ndviEntries, imagesLoading, imagesError, activeGeometryHash } = useAppStore();
 
   const loading = imagesLoading && activeGeometryHash !== fieldId;
   const error = imagesError;
 
-  const allEntries = useMemo(
-    () => activeGeometryHash === fieldId ? ndviEntries : [],
-    [activeGeometryHash, fieldId, ndviEntries]
-  );
+  const allEntries = activeGeometryHash === fieldId ? ndviEntries : [];
 
-  const filteredImages = useMemo(
-    () => allEntries
-      .filter(e => getYear(e.generationtime) === selectedYear)
-      .sort((a, b) => new Date(a.generationtime).getTime() - new Date(b.generationtime).getTime()),
-    [allEntries, selectedYear]
-  );
+  const filteredImages = allEntries
+    .filter(e => getYear(e.generationtime) === selectedYear)
+    .sort((a, b) => new Date(a.generationtime).getTime() - new Date(b.generationtime).getTime());
+
+  // Lasketaan suoraan — ei statea eikä memoa
+  const selectedDate = filteredImages.length > 0
+    ? new Date(filteredImages[index].generationtime)
+    : null;
 
   // Vuodet allEntries muuttuessa
   useEffect(() => {
@@ -60,15 +57,15 @@ export default function NdviMapViewer({ fieldId, fieldName }: Props) {
     const years = [...new Set(allEntries.map(e => getYear(e.generationtime)))].sort((a, b) => b - a);
     setAvailableYears(years);
     setSelectedYear(years[0]);
-  }, [allEntries]);
+  }, [allEntries.length]);
 
-  // Reset index kun filteredImages muuttuu
+  // Reset index uusimpaan kun vuosi tai data muuttuu
   useEffect(() => {
-    setIndex(0);
-  }, [filteredImages]);
+    setIndex(filteredImages.length > 0 ? filteredImages.length - 1 : 0);
+  }, [selectedYear, allEntries.length]);
 
-  const prev = useCallback(() => setIndex(i => Math.max(0, i - 1)), []);
-  const next = useCallback(() => setIndex(i => Math.min(filteredImages.length - 1, i + 1)), [filteredImages.length]);
+  const prev = () => setIndex(i => Math.max(0, i - 1));
+  const next = () => setIndex(i => Math.min(filteredImages.length - 1, i + 1));
 
   // Näppäimistönavigointi
   useEffect(() => {
@@ -78,7 +75,7 @@ export default function NdviMapViewer({ fieldId, fieldName }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [prev, next]);
+  }, [filteredImages.length]);
 
   // Swipe
   const handleTouchStart = (e: React.TouchEvent) => setTouchStartX(e.touches[0].clientX);
@@ -90,14 +87,13 @@ export default function NdviMapViewer({ fieldId, fieldName }: Props) {
 
   useEffect(() => { setImgLoaded(false); }, [index]);
 
-  // Date picker hyppy
-  useEffect(() => {
-    if (!selectedDate) return;
+  const handleDateChange = (date: Date | null) => {
+    if (!date) return;
     const targetIdx = filteredImages.findIndex(
-      e => new Date(e.generationtime).toDateString() === selectedDate.toDateString()
+      e => new Date(e.generationtime).toDateString() === date.toDateString()
     );
     if (targetIdx !== -1) setIndex(targetIdx);
-  }, [selectedDate, filteredImages]);
+  };
 
   if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
   if (error) return <Alert severity="error">{error}</Alert>;
@@ -140,7 +136,8 @@ export default function NdviMapViewer({ fieldId, fieldName }: Props) {
               <NdviDatePicker
                 value={selectedDate}
                 selectedYear={selectedYear}
-                onChange={(date) => setSelectedDate(date)}
+                onChange={handleDateChange}
+                availableDates={filteredImages.map(e => new Date(e.generationtime))}
               />
               <Typography variant="caption" color="text.secondary">
                 {filteredImages.length} kuvaa
