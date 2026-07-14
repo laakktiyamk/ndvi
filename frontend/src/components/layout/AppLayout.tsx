@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
+import { useAppStore } from '../../store/appStore';
 import {
   AppBar, Box, IconButton, Toolbar,
   Typography, useMediaQuery, useTheme,
@@ -22,6 +23,10 @@ export default function AppLayout() {
   const [navOpen, setNavOpen] = useState(true);  // ← desktop collapse
   const { user, logout } = useAuthStore();
 
+  const { fields, activeGeometryHash, ndviEntries } = useAppStore();
+  const activeField = fields.find(f => f.id === activeGeometryHash);
+  const activeFieldName = activeField?.name ?? (ndviEntries[0] as any)?.name ?? null;
+
   const effectiveLeft = isMobile ? 0 : navOpen ? DRAWER_WIDTH : 0;
 
   return (
@@ -41,10 +46,21 @@ export default function AppLayout() {
             </Tooltip>
           )}
 
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1, fontWeight: 700 }}>
-            🌿 NDVI Monitor
-          </Typography>
-
+          <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'baseline', gap: 1.5, minWidth: 0 }}>
+            <Typography variant="h6" noWrap sx={{ fontWeight: 700, flexShrink: 0 }}>
+              🌿 NDVI Monitor
+            </Typography>
+            {activeFieldName && (
+              <>
+                <Typography variant="body2" color="inherit" sx={{ opacity: 0.5, flexShrink: 0 }}>
+                  /
+                </Typography>
+                <Typography variant="body2" noWrap color="inherit" sx={{ opacity: 0.85, fontWeight: 500 }}>
+                  {activeFieldName}
+                </Typography>
+              </>
+            )}
+          </Box>
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Avatar sx={{ width: 28, height: 28, fontSize: 13, bgcolor: 'primary.dark' }}>

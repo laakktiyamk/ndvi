@@ -17,10 +17,14 @@ const saveWeatherItems = async (
       sentinelid: `${date}_${geometryHash}`,
       date,
       geometryHash,
-      temperature_2m_mean:        _data.daily.temperature_2m_mean[i] ?? null,
-      precipitation_sum:          _data.daily.precipitation_sum[i] ?? null,
-      shortwave_radiation_sum:    _data.daily.shortwave_radiation_sum[i] ?? null,
+      temperature_2m_mean: _data.daily.temperature_2m_mean[i] ?? null,
+      precipitation_sum: _data.daily.precipitation_sum[i] ?? null,
+      shortwave_radiation_sum: _data.daily.shortwave_radiation_sum[i] ?? null,
       et0_fao_evapotranspiration: _data.daily.et0_fao_evapotranspiration[i] ?? null,
+      temperature_2m_max: _data.daily.temperature_2m_max?.[i] ?? null,
+      temperature_2m_min: _data.daily.temperature_2m_min?.[i] ?? null,
+      relative_humidity_2m_mean: _data.daily.relative_humidity_2m_mean?.[i] ?? null,
+      wind_speed_10m_mean: _data.daily.wind_speed_10m_mean?.[i] ?? null,
     };
     await mongodb.saveWeather(item);
     saved.push(item);

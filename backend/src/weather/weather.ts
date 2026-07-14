@@ -46,8 +46,8 @@ export const getWeatherData = async (
         latitude: lat,
         longitude: lon,
         start_date: formatDate(startDate),
-        end_date: formatDate(safeEndDate),
-        daily: "temperature_2m_mean,precipitation_sum,shortwave_radiation_sum,et0_fao_evapotranspiration",
+        end_date: formatDate(safeEndDate),        
+        daily: "temperature_2m_mean,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,precipitation_sum,shortwave_radiation_sum,et0_fao_evapotranspiration,wind_speed_10m_mean",
         timezone: "UTC",
       },
     }

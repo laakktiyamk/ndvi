@@ -11,6 +11,11 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useAppStore } from '../store/appStore';
 import NdviMapViewer from '../components/ndvi/NdviMapViewer';
 
+import SearchIcon from '@mui/icons-material/Search';
+import InputAdornment from '@mui/material/InputAdornment';
+import TextField from '@mui/material/TextField';
+
+
 const today = new Date().toISOString().split('T')[0];
 
 export default function FieldsPage() {
@@ -30,8 +35,17 @@ export default function FieldsPage() {
   } = useAppStore();
 
   const [listOpen, setListOpen] = useState(true);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   useEffect(() => { fetchFields(); }, [fetchFields]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   const handleSelectField = (id: string) => {
     setSelectedField(id);
@@ -43,6 +57,11 @@ export default function FieldsPage() {
   };
 
   const selectedField = fields.find((f) => f.id === selectedFieldId);
+
+
+  const filteredFields = fields.filter(f =>
+    f.name.toLowerCase().includes(search.toLowerCase()));
+
 
   return (
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: '100%' }}>
@@ -60,6 +79,25 @@ export default function FieldsPage() {
             </Box>
             <Divider />
 
+            {/* Search */}
+            <Box sx={{ px: 1.5, py: 1 }}>
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Hae lohkoa..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}                
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" color="action" />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            </Box>
             {fromGeoJson && (
               <Alert severity="success" sx={{ m: 1, py: 0.5 }}>
                 Uusi lohko lisätty
@@ -75,8 +113,8 @@ export default function FieldsPage() {
             )}
 
             <List disablePadding sx={{ overflow: 'auto', flex: 1 }}>
-              {fields.map((field, i) => (
-                <ListItem key={field.id} disablePadding divider={i < fields.length - 1}>
+              {filteredFields.map((field, i) => (
+                <ListItem key={field.id} disablePadding divider={i < filteredFields.length - 1}>
                   <ListItemText
                     primary={field.name}
                     secondary={field.area ? `${(field.area / 10000).toFixed(2)} ha` : undefined}

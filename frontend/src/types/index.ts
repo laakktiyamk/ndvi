@@ -11,22 +11,24 @@ export interface IField {
 }
 
 // ─── NDVI ────────────────────────────────────────────
+
 export interface NdviImage {
   _id: string;
-  id: string;          // "2026-06-26T00:00:00Z_geometriahash"
+  id: string;
   average: number;
   max: number;
   min: number;
   std: number;
   image: {
-    dataUrl: string;   // "data:image/png;base64,..."
+    dataUrl: string;
     minX: number;
     minY: number;
     maxX: number;
     maxY: number;
   };
-  scale: number[];
+  scale: { color: string; amount: number; from: number }[];
 }
+
 
 export interface INdviResult {
   _id: string;
@@ -45,12 +47,15 @@ export interface INdviResult {
 export interface IWeather {
   _id: string;
   sentinelid: string;
-  fieldId: string;
   date: string;
-  temperature_2m_max: number;
-  temperature_2m_min: number;
-  precipitation_sum: number;
-  windspeed_10m_max: number;
+  geometryHash?: string;
+  temperature_2m_mean: number | null;
+  temperature_2m_max: number | null;
+  temperature_2m_min: number | null;
+  relative_humidity_2m_mean: number | null;
+  precipitation_sum: number | null;
+  shortwave_radiation_sum: number | null;
+  et0_fao_evapotranspiration: number | null;
   createdAt: string;
 }
 
@@ -72,4 +77,19 @@ export interface MergedNdviEntry {
   generationtime: string;
   stats: { average: number; max: number; min: number; std: number };
   image: NdviImage | undefined;
+}
+
+export interface IWeather {
+  _id: string;
+  sentinelid: string;
+  fieldId: string;
+  date: string;
+  temperature_2m_max: number | null;
+  temperature_2m_min: number | null;
+  precipitation_sum: number | null;
+  windspeed_10m_max: number;
+  shortwave_radiation_sum: number | null;
+  et0_fao_evapotranspiration: number | null;
+  createdAt: string;
+  wind_speed_10m_mean: number | null;
 }

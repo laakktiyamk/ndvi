@@ -15,10 +15,15 @@ export interface IWeather {
   date: string;
   geometryHash: string;
   temperature_2m_mean: number | null;
+  temperature_2m_max: number | null;
+  temperature_2m_min: number | null;
+  relative_humidity_2m_mean: number | null;
   precipitation_sum: number | null;
   shortwave_radiation_sum: number | null;
   et0_fao_evapotranspiration: number | null;
+  wind_speed_10m_mean: number | null;
 }
+
 
 interface IScaleItem {
     color: string;

@@ -1,19 +1,22 @@
-import { Box, Typography, Paper } from '@mui/material';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
+import { Box, Typography } from '@mui/material';
+import WeatherView from './WeatherView';
+import { useAppStore } from '../store/appStore';
 
 export default function WeatherPage() {
+  const { fields, activeGeometryHash, ndviEntries } = useAppStore();
+  const activeField = fields.find(f => f.id === activeGeometryHash);
+  const activeFieldName = activeField?.name ?? (ndviEntries[0] as any)?.name ?? null;
+
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
         <WbSunnyIcon color="primary" />
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
-  Sää
-</Typography>
-
+          Sää{activeFieldName ? ` — ${activeFieldName}` : ''}
+        </Typography>
       </Box>
-      <Paper sx={{ p: 3 }}>
-        <Typography color="text.secondary">Säätiedot ladataan tähän. Valitse ensin lohko.</Typography>
-      </Paper>
+      <WeatherView />
     </Box>
   );
 }

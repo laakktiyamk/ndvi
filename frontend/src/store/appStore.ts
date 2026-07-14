@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import type { IField, MergedNdviEntry } from '../types';
+import type { IField, IWeather, MergedNdviEntry } from '../types';
 import { getFields } from '../services/fieldService';
 import { getDatesForGeometry, fetchImagesByIds } from '../services/ndviService';
+import { getWeatherForGeometry } from '../services/weatherService';
 
 interface AppState {
   // ── Fields (lista) ──────────────────────────────
@@ -13,10 +14,15 @@ interface AppState {
   recentFieldIds: string[];
 
   // ── Aktiivinen AOI:n NDVI-data ───────────────────
-  activeGeometryHash: string | null;   // = field.id, kertoo mikä AOI on tällä hetkellä ladattu
-  ndviEntries: MergedNdviEntry[];      // dates + images yhdistettynä, järjestyksessä
+  activeGeometryHash: string | null;
+  ndviEntries: MergedNdviEntry[];
   imagesLoading: boolean;
   imagesError: string | null;
+
+  // ── Säätiedot ────────────────────────────────────
+  weatherData: IWeather[];
+  weatherLoading: boolean;
+  weatherError: string | null;
 
   // ── GeoJSON-syöte ────────────────────────────────
   geoJsonInput: string;
@@ -31,13 +37,12 @@ interface AppState {
     startDate: string,
     endDate: string
   ) => Promise<void>;
-  // Käytetään GeoJSON-syötteelle, kun field.id ei ole vielä tiedossa etukäteen
   fetchImagesForGeometry: (
     geometry: object,
     startDate: string,
     endDate: string,
     name?: string
-  ) => Promise<string | null>; // palauttaa uuden field id:n (geometryHash) tai null virheessä
+  ) => Promise<string | null>;
   setGeoJsonInput: (text: string) => void;
   setValidGeoJson: (gj: object | null) => void;
   setStartDate: (d: string) => void;
@@ -56,6 +61,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   ndviEntries: [],
   imagesLoading: false,
   imagesError: null,
+
+  weatherData: [],
+  weatherLoading: false,
+  weatherError: null,
 
   geoJsonInput: '',
   validGeoJson: null,
@@ -84,21 +93,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchImagesForField: async (field, startDate, endDate) => {
-    // Jo aktiivinen tämä AOI → ei toisteta hakua
     if (get().activeGeometryHash === field.id) return;
     if (get().imagesLoading) return;
 
     set({ imagesLoading: true, imagesError: null });
     try {
-      // 1. Hae/päivitä dates (backend tsekkaa Mongon + täydentää Sentinel Hubista jos tarpeen)
       const datesRes = await getDatesForGeometry(field.geometry, startDate, endDate);
       const ids = datesRes.dates.map((d) => d.sentinelid);
 
-      // 2. Hae kuvat niillä id:llä — palauttaa jo valmiiksi Record<sentinelid, NdviImage>
       const imagesRes = await fetchImagesByIds(ids);
       const imagesById = imagesRes.data;
 
-      // 3. Yhdistä dates (päivämäärä + stats) ja images (pikselidata) yhdeksi listaksi
       const merged: MergedNdviEntry[] = datesRes.dates.map((d) => ({
         sentinelid: d.sentinelid,
         generationtime: d.generationtime,
@@ -111,6 +116,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         ndviEntries: merged,
         imagesLoading: false,
       });
+
+      // Hae säätiedot taustalla
+      set({ weatherLoading: true, weatherError: null });
+      getWeatherForGeometry(field.id)
+        .then((data) => set({ weatherData: data, weatherLoading: false }))
+        .catch((e: unknown) => set({
+          weatherError: e instanceof Error ? e.message : 'Säädata epäonnistui',
+          weatherLoading: false,
+        }));
+
     } catch (e: unknown) {
       set({
         imagesLoading: false,
@@ -119,35 +134,39 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  fetchImagesForGeometry: async (geometry, startDate, endDate,name) => {
+  fetchImagesForGeometry: async (geometry, startDate, endDate, name) => {
     if (get().imagesLoading) return null;
     set({ imagesLoading: true, imagesError: null });
     try {
-      // 1. Hae dates raa'alle geometrialle — backend luo/päivittää dokumentin ja palauttaa id:n (geometryHash)
-      const datesRes = await getDatesForGeometry(geometry, startDate, endDate,name);
+      const datesRes = await getDatesForGeometry(geometry, startDate, endDate, name);
       const ids = datesRes.dates.map((d) => d.sentinelid);
 
-      // 2. Hae kuvat niillä id:llä
       const imagesRes = await fetchImagesByIds(ids);
       const imagesById = imagesRes.data;
 
-      // 3. Yhdistä
       const merged: MergedNdviEntry[] = datesRes.dates.map((d) => ({
         sentinelid: d.sentinelid,
         generationtime: d.generationtime,
         stats: d.stats,
         image: imagesById[d.sentinelid],
-        name: name, // Lisätään nimi, jos annettu
+        name: name,
       }));
 
       set({
         activeGeometryHash: datesRes.id,
         ndviEntries: merged,
         imagesLoading: false,
-
-        // Pakota fields-lista hakemaan uudestaan, koska uusi/mahdollisesti muuttunut AOI syntyi
         fieldsFetched: false,
       });
+
+      // Hae säätiedot taustalla
+      set({ weatherLoading: true, weatherError: null });
+      getWeatherForGeometry(datesRes.id)
+        .then((data) => set({ weatherData: data, weatherLoading: false }))
+        .catch((e: unknown) => set({
+          weatherError: e instanceof Error ? e.message : 'Säädata epäonnistui',
+          weatherLoading: false,
+        }));
 
       return datesRes.id;
     } catch (e: unknown) {
@@ -174,5 +193,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       ndviEntries: [],
       imagesLoading: false,
       imagesError: null,
+      weatherData: [],
+      weatherLoading: false,
+      weatherError: null,
     }),
 }));
