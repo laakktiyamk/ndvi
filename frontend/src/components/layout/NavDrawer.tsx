@@ -2,7 +2,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer, List, ListItem, ListItemButton,
   ListItemIcon, ListItemText, Toolbar, Divider, Typography, Box,
-  Collapse,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import GrassIcon from '@mui/icons-material/Grass';
@@ -24,7 +23,7 @@ interface NavDrawerProps {
   isMobile: boolean;
   drawerWidth: number;
   navOpen?: boolean;
-  onNavClose?: () => void;  // ← uusi
+  onNavClose?: () => void;
 }
 
 export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpen = true, onNavClose }: NavDrawerProps) {
@@ -34,7 +33,7 @@ export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpe
   const handleClick = (path: string) => {
     navigate(path);
     if (isMobile) onClose();
-    else onNavClose?.();  // ← sulkee desktopilla
+    else onNavClose?.();
   };
 
   const drawerContent = (
@@ -49,6 +48,7 @@ export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpe
               onClick={() => handleClick(path)}
               sx={{
                 mx: 1, mb: 0.5,
+                borderRadius: 1,
                 '&.Mui-selected': {
                   bgcolor: 'primary.main',
                   color: 'white',
@@ -70,6 +70,7 @@ export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpe
     </Box>
   );
 
+  // Mobiili: temporary drawer (liu'uttaa sivulta, sulkeutuu taustaa klikkaamalla)
   if (isMobile) {
     return (
       <Drawer
@@ -84,19 +85,31 @@ export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpe
     );
   }
 
-  // Desktop: collapsible permanent drawer
+  // Desktop: permanent drawer joka liukuu CSS transform -animaatiolla.
+  // Aiempi Collapse + permanent -yhdistelmä aiheutti layout-ongelmia
+  // (z-index, DOM:iin jäävä drawer kun leveys = 0). Nyt Drawer pysyy
+  // DOM:issa ja Paper siirtyy translateX:llä ruudun ulkopuolelle.
+  // AppLayout laskee effectiveLeft tämän mukaan (navOpen ? DRAWER_WIDTH : 0).
   return (
-    <Collapse in={navOpen} orientation="horizontal" timeout={200}>
-      <Drawer
-        variant="permanent"
-        sx={{
+    <Drawer
+      variant="permanent"
+      sx={{
+        width: navOpen ? drawerWidth : 0,
+        flexShrink: 0,
+        transition: 'width 0.2s ease',
+        // overflow:hidden estää drawerin sisällön näkymisen siirron aikana
+        overflow: 'hidden',
+        '& .MuiDrawer-paper': {
           width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' },
-        }}
-      >
-        {drawerContent}
-      </Drawer>
-    </Collapse>
+          boxSizing: 'border-box',
+          transform: navOpen ? 'translateX(0)' : `translateX(-${drawerWidth}px)`,
+          transition: 'transform 0.2s ease',
+          // Varmistaa ettei drawer näy AppBarin päällä animoinnin aikana
+          visibility: navOpen ? 'visible' : 'hidden',
+        },
+      }}
+    >
+      {drawerContent}
+    </Drawer>
   );
 }

@@ -20,7 +20,7 @@ export default function AppLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [navOpen, setNavOpen] = useState(true);  // ← desktop collapse
+  const [navOpen, setNavOpen] = useState(true);
   const { user, logout } = useAuthStore();
 
   const { fields, activeGeometryHash, ndviEntries } = useAppStore();
@@ -38,7 +38,6 @@ export default function AppLayout() {
               <MenuIcon />
             </IconButton>
           ) : (
-            // Desktop: vipu navdrawerin avaamiseen/sulkemiseen
             <Tooltip title={navOpen ? 'Piilota valikko' : 'Näytä valikko'}>
               <IconButton color="inherit" edge="start" onClick={() => setNavOpen(v => !v)} sx={{ mr: 1 }}>
                 {navOpen ? <ChevronLeftIcon /> : <ChevronRightIcon />}
@@ -61,6 +60,7 @@ export default function AppLayout() {
               </>
             )}
           </Box>
+
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Avatar sx={{ width: 28, height: 28, fontSize: 13, bgcolor: 'primary.dark' }}>
@@ -93,11 +93,24 @@ export default function AppLayout() {
           top: `${APPBAR_HEIGHT}px`,
           left: `${effectiveLeft}px`,
           right: 0,
-          bottom: 0,
-          overflow: 'auto',
+          // dvh huomioi iOS Safarin bottom barin, 100vh ei tee tätä
+          height: 'calc(100vh - 64px)',
+          '@supports (height: 100dvh)': {
+            height: 'calc(100dvh - 64px)',
+          },
+          // display:flex + flexDirection:column antaa lapsille mahdollisuuden
+          // käyttää height:'100%' — position:fixed ei periydy ilman tätä,
+          // joten FieldsPage / NdviMapViewer romahtivat tai jäivät piiloon.
+          display: 'flex',
+          flexDirection: 'column',
+          // overflow:hidden täällä — scroll hoidetaan sivukohtaisesti sisällä.
+          // Aiempi overflow:auto aiheutti sen että koko sivu scrollasi
+          // eikä sisältö saanut oikeaa korkeutta flexissä.
+          overflow: 'hidden',
           bgcolor: 'background.default',
           p: { xs: 2, sm: 3 },
           transition: 'left 0.2s ease',
+          boxSizing: 'border-box',
         }}
       >
         <Outlet />
