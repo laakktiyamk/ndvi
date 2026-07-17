@@ -55,41 +55,6 @@ export default function StatisticsTab({ entry, weather }: Props) {
         </Box>
       ))}
 
-      {/* Kasvillisuusjakauma */}
-      {image?.scale && image.scale.length > 0 && (
-        <>
-          <Divider />
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              Kasvillisuusjakauma
-            </Typography>
-            <Box sx={{ display: 'flex', height: 18, borderRadius: 1, overflow: 'hidden', width: '100%' }}>
-              {image.scale.map((cls, i) =>
-                cls.amount < 0.5 ? null : (
-                  <Tooltip key={i} title={`${cls.amount.toFixed(1)}%`} arrow>
-                    <Box sx={{
-                      width: `${cls.amount}%`,
-                      bgcolor: cls.color,
-                      transition: 'width 0.4s ease',
-                      cursor: 'default',
-                    }} />
-                  </Tooltip>
-                )
-              )}
-            </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-              {image.scale.map((cls, i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: cls.color, flexShrink: 0 }} />
-                  <Typography variant="caption" color="text.secondary">
-                    {cls.amount.toFixed(1)}%
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        </>
-      )}
 
       {/* Säätiedot */}
       {weather && (

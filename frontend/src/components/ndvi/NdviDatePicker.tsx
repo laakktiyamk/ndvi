@@ -54,31 +54,25 @@ export default function NdviDatePicker({
   // tehdään ::after-pseudoelementtinä suoraan PickerDayyn — ei ylimääräisiä DOM-nodeja.
   const renderDay = (props: PickerDayProps) => {
     const isAvailable = availableDates.some((d) => isSameDay(d, props.day));
+
     return (
       <PickerDay
         {...props}
         sx={{
-          ...(isAvailable &&
-            !props.outsideCurrentMonth && {
-              fontWeight: "bold",
-              // Piste valittavissa olevien päivien alla
-              "&:not(.Mui-selected)::after": {
-                content: '""',
-                position: "absolute",
-                bottom: 3,
-                left: "50%",
-                transform: "translateX(-50%)",
-                width: 4,
-                height: 4,
-                borderRadius: "50%",
-                bgcolor: "primary.main",
-              },
-            }),
+          ...(isAvailable && !props.outsideCurrentMonth && {
+            fontWeight: 'bold',
+            // Outlined circle saatavilla oleville päiville (ei valitulle)
+            '&:not(.Mui-selected)': {
+              border: '1.5px solid',
+              borderColor: 'primary.main',
+              borderRadius: '50%',
+            },
+            // Piste poistetaan — circle riittää indikaattoriksi
+          }),
         }}
       />
     );
   };
-
   const calendar = (
     <DateCalendar
       value={value}

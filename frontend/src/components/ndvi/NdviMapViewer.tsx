@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Box, Paper, Typography, IconButton, Chip,
-  CircularProgress, Alert, Skeleton,
-  Select, MenuItem, FormControl, InputLabel,
+  CircularProgress, Alert,
+  Select, MenuItem, FormControl, InputLabel, Tooltip,
+  useTheme,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import FullscreenablePanel from '../shared/FullscreenablePanel';
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
+import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAppStore } from '../../store/appStore';
 import NdviDatePicker from './NdviDatePicker';
-import NdviTimelineChart from './NdviTimelineChart';
 import NdviViewPanel from './NdviViewPanel';
 
 interface Props {
@@ -28,18 +31,23 @@ const fmt = (date: string) =>
 const getYear = (date: string) => new Date(date).getFullYear();
 
 export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
+  const theme = useTheme();
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
-  const [imgLoaded, setImgLoaded] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const leafletRef = useRef<L.Map | null>(null);
+  const overlayRef = useRef<L.ImageOverlay | null>(null);
+  const mapInitialized = useRef(false);
 
   const { ndviEntries, imagesLoading, imagesError, activeGeometryHash } = useAppStore();
 
   const loading = imagesLoading && activeGeometryHash !== fieldId;
   const error = imagesError;
-
   const allEntries = activeGeometryHash === fieldId ? ndviEntries : [];
 
   const filteredImages = allEntries
@@ -80,8 +88,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     if (diff < -50) prev();
   };
 
-  useEffect(() => { setImgLoaded(false); }, [index]);
-
   const handleDateChange = (date: Date | null) => {
     if (!date) return;
     const targetIdx = filteredImages.findIndex(
@@ -89,6 +95,82 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     );
     if (targetIdx !== -1) setIndex(targetIdx);
   };
+
+  // ── Leaflet init ─────────────────────────────────────────────────────────
+  // Käytetään requestAnimationFrame varmistamaan että DOM-elementillä on
+  // oikea koko ennen kuin Leaflet alustetaan. Ilman tätä Leaflet saa
+  // height:0 ja tile-layer / overlay ei renderöidy.
+  useEffect(() => {
+    if (filteredImages.length === 0 || mapInitialized.current) return;
+
+    const entry = filteredImages[index];
+    if (!entry?.image) return;
+
+    const raf = requestAnimationFrame(() => {
+      if (!mapContainerRef.current || mapInitialized.current) return;
+
+      mapInitialized.current = true;
+
+      const map = L.map(mapContainerRef.current, {
+        zoomControl: true,
+        attributionControl: true,
+      });
+
+      L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
+      ).addTo(map);
+
+      const { minX, minY, maxX, maxY, dataUrl } = entry.image.image;
+      const bounds: L.LatLngBoundsExpression = [[minY, minX], [maxY, maxX]];
+
+      overlayRef.current = L.imageOverlay(dataUrl, bounds, {
+        opacity: 0.85,
+        interactive: false,
+      }).addTo(map);
+
+      map.fitBounds(bounds, { padding: [20, 20] });
+      leafletRef.current = map;
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (leafletRef.current) {
+        leafletRef.current.remove();
+        leafletRef.current = null;
+        overlayRef.current = null;
+        mapInitialized.current = false;
+      }
+    };
+  }, [filteredImages.length]);
+
+  // ── Overlay update kun index vaihtuu ─────────────────────────────────────
+  useEffect(() => {
+    if (!leafletRef.current || filteredImages.length === 0) return;
+    const entry = filteredImages[index];
+    if (!entry?.image) return;
+
+    const { minX, minY, maxX, maxY, dataUrl } = entry.image.image;
+    const bounds = L.latLngBounds([[minY, minX], [maxY, maxX]]);
+
+    if (overlayRef.current) {
+      overlayRef.current.setUrl(dataUrl);
+      overlayRef.current.setBounds(bounds);
+    } else {
+      overlayRef.current = L.imageOverlay(dataUrl, bounds, { opacity: 0.85, interactive: false })
+        .addTo(leafletRef.current);
+    }
+  }, [index]);
+
+  // ── invalidateSize fullscreen-muutoksessa ─────────────────────────────────
+  // Leaflet ei tiedä kontin koon muuttuneen ilman tätä kutsua.
+  useEffect(() => {
+    if (!leafletRef.current) return;
+    const timer = setTimeout(() => {
+      leafletRef.current?.invalidateSize();
+    }, 250); // transition kestää 200ms
+    return () => clearTimeout(timer);
+  }, [isFullscreen]);
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -102,209 +184,181 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const imageDate = current.generationtime;
   const isFirst = index === 0;
   const isLast = index === filteredImages.length - 1;
-  const dataUrl = current.image?.image.dataUrl;
 
   return (
     <Box sx={{
       display: 'flex',
       flexDirection: { xs: 'column', md: 'row' },
       gap: 2,
-      height: { md: '100%' },
+      height: { xs: 'auto', md: '100%' },
     }}>
 
-      {/* ── Vasen: NDVI-kuvaviewer ── */}
-      <FullscreenablePanel>
-        {(isFullscreen) => (
-          <Paper sx={{
+      {/* ── Karttaviewer — fullscreen hoidetaan itse ── */}
+      <Paper
+        sx={{
+          // Fullscreen: fixed koko ruutu, zIndex modaalin tasolla
+          ...(isFullscreen ? {
+            position: 'fixed',
+            inset: 0,
+            zIndex: theme.zIndex.modal,
+            borderRadius: 0,
+          } : {
             flex: { md: '1 1 65%' },
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            minHeight: { xs: 320, md: 0 },
-            height: isFullscreen ? '100%' : 'auto',
-            borderRadius: isFullscreen ? 0 : 2,
-          }}>
-
-            {/* Vuosivalitsin + datepicker
-                flexWrap lisätty: kapealla näytöllä elementit rivittyvät
-                sen sijaan että menevät päällekkäin tai ulos ruudusta */}
-            <Box sx={{
-              px: 2, py: 1,
-              borderBottom: 1, borderColor: 'divider',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1.5,
-              flexWrap: 'wrap',
-            }}>
-              <FormControl size="small" sx={{ minWidth: 100 }}>
-                <InputLabel>Vuosi</InputLabel>
-                <Select
-                  value={selectedYear}
-                  label="Vuosi"
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
-                >
-                  {availableYears.map(y => (
-                    <MenuItem key={y} value={y}>{y}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <NdviDatePicker
-                value={selectedDate}
-                selectedYear={selectedYear}
-                onChange={handleDateChange}
-                availableDates={filteredImages.map(e => new Date(e.generationtime))}
-              />
-              <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-                {filteredImages.length} kuvaa
-              </Typography>
-            </Box>
-
-            {/* Kuva-alue */}
-            <Box
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              sx={{
-                flex: 1,
-                position: 'relative',
-                bgcolor: 'background.paper',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                minHeight: 0,
-                userSelect: 'none',
-              }}
+            // Eksplisiittinen korkeus mobiilissa jotta Leaflet saa oikean koon
+            // heti mount-vaiheessa eikä saa height:0
+            height: { xs: 480, md: '100%' },
+            minHeight: { md: 0 },
+          }),
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Toolbar */}
+        <Box sx={{
+          px: 2, py: 1,
+          borderBottom: 1, borderColor: 'divider',
+          display: 'flex', alignItems: 'center', gap: 1.5,
+          flexWrap: 'wrap', flexShrink: 0,
+        }}>
+          <FormControl size="small" sx={{ minWidth: 100 }}>
+            <InputLabel>Vuosi</InputLabel>
+            <Select
+              value={selectedYear}
+              label="Vuosi"
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
             >
-              {!imgLoaded && (
-                <Skeleton
-                  variant="rectangular"
-                  sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-                />
-              )}
-              {dataUrl && (
+              {availableYears.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <NdviDatePicker
+            value={selectedDate}
+            selectedYear={selectedYear}
+            onChange={handleDateChange}
+            availableDates={filteredImages.map(e => new Date(e.generationtime))}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+            {filteredImages.length} kuvaa
+          </Typography>
+          <IconButton
+            onClick={() => setIsFullscreen(v => !v)}
+            size="small"
+            sx={{ ml: 'auto' }}
+            aria-label={isFullscreen ? 'Sulje koko ruutu' : 'Avaa koko ruutu'}
+          >
+            {isFullscreen
+              ? <CloseFullscreenIcon fontSize="small" />
+              : <OpenInFullIcon fontSize="small" />}
+          </IconButton>
+        </Box>
+
+        {/* Leaflet-kartta */}
+        <Box
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          sx={{
+            flex: 1, minHeight: 0, position: 'relative',
+            '& .leaflet-container': { height: '100%', width: '100%', background: '#1a1a2e' },
+          }}
+        >
+          <Box ref={mapContainerRef} sx={{ height: '100%', width: '100%' }} />
+          <Chip
+            label={fmt(imageDate)}
+            size="small"
+            sx={{
+              position: 'absolute', bottom: 32, left: '50%',
+              transform: 'translateX(-50%)',
+              bgcolor: 'rgba(0,0,0,0.65)', color: '#fff',
+              fontWeight: 600, backdropFilter: 'blur(4px)',
+              pointerEvents: 'none', zIndex: 1000,
+            }}
+          />
+        </Box>
+
+        {/* Navigointipalkki */}
+        <Box sx={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          px: 2, py: 1.5, borderTop: 1, borderColor: 'divider', flexShrink: 0,
+        }}>
+          <IconButton onClick={prev} disabled={isFirst} size="small" aria-label="Edellinen">
+            <ArrowBackIosNewIcon fontSize="small" />
+          </IconButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {filteredImages.slice(Math.max(0, index - 10), index + 10).map((entry, i) => {
+              const realIdx = Math.max(0, index - 10) + i;
+              const isActive = realIdx === index;
+              return (
                 <Box
-                  component="img"
-                  src={dataUrl}
-                  alt={`NDVI ${fmt(imageDate)}`}
-                  onLoad={() => setImgLoaded(true)}
+                  key={entry.sentinelid}
+                  onClick={() => setIndex(realIdx)}
+                  role="button"
+                  aria-label={`Kuva ${realIdx + 1}`}
                   sx={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    opacity: imgLoaded ? 1 : 0,
-                    transition: 'opacity 0.3s',
-                    pointerEvents: 'none',
-                    filter: 'blur(1px)',
+                    p: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
                   }}
-                />
-              )}
-              <Chip
-                label={fmt(imageDate)}
-                size="small"
-                sx={{
-                  position: 'absolute', bottom: 12, left: '50%',
-                  transform: 'translateX(-50%)',
-                  bgcolor: 'rgba(0,0,0,0.65)', color: '#fff',
-                  fontWeight: 600, backdropFilter: 'blur(4px)',
-                  pointerEvents: 'none',
-                }}
-              />
-            </Box>
+                >
+                  <Box sx={{
+                    width: isActive ? 10 : 6, height: isActive ? 10 : 6,
+                    borderRadius: '50%',
+                    bgcolor: isActive ? 'primary.main' : 'action.disabled',
+                    transition: 'all 0.2s', flexShrink: 0,
+                  }} />
+                </Box>
+              );
+            })}
+          </Box>
+          <IconButton onClick={next} disabled={isLast} size="small" aria-label="Seuraava">
+            <ArrowForwardIosIcon fontSize="small" />
+          </IconButton>
+        </Box>
 
-            {/* Navigointipalkki */}
-            <Box sx={{
-              display: 'flex', alignItems: 'center',
-              justifyContent: 'space-between',
-              px: 2, py: 1.5,
-              borderTop: 1, borderColor: 'divider',
-            }}>
-              <IconButton onClick={prev} disabled={isFirst} size="small" aria-label="Edellinen">
-                <ArrowBackIosNewIcon fontSize="small" />
-              </IconButton>
-
-              {/* Piste-navigaatio
-                  Aiempi versio: pienet 6px-pisteet suoraan klikattavina → touch-target liian pieni.
-                  WCAG suosittelee min 44×44px touch-aluetta.
-                  Nyt piste on wrapperi-Boxin sisällä jolla on p: '10px' — näkyvä piste pysyy
-                  samankokoisena mutta klikattava alue on ~26×26px (riittävä useimmille käyttäjille).
-                  Täysi 44px vaatisi p: '17px' mutta tekisi palkista liian korkean. */}
-              <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-                {filteredImages.slice(Math.max(0, index - 10), index + 10).map((entry, i) => {
-                  const realIdx = Math.max(0, index - 10) + i;
-                  const isActive = realIdx === index;
-                  return (
-                    <Box
-                      key={entry.sentinelid}
-                      onClick={() => setIndex(realIdx)}
-                      role="button"
-                      aria-label={`Kuva ${realIdx + 1}`}
-                      sx={{
-                        p: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        // Estää tahattoman tekstin valinnan nopeissa naputteluissa
-                        userSelect: 'none',
-                        WebkitTapHighlightColor: 'transparent',
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: isActive ? 10 : 6,
-                          height: isActive ? 10 : 6,
-                          borderRadius: '50%',
-                          bgcolor: isActive ? 'primary.main' : 'action.disabled',
-                          transition: 'all 0.2s',
-                          flexShrink: 0,
-                        }}
-                      />
-                    </Box>
-                  );
-                })}
-              </Box>
-
-              <IconButton onClick={next} disabled={isLast} size="small" aria-label="Seuraava">
-                <ArrowForwardIosIcon fontSize="small" />
-              </IconButton>
-            </Box>
-
-            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', pb: 1 }}>
-              {index + 1} / {filteredImages.length}
-              {typeof selectedYear === 'number' ? ` · ${selectedYear}` : ''}
+        {/* Kasvillisuusjakauma */}
+        {current.image?.scale && current.image.scale.length > 0 && (
+          <Box sx={{ px: 2, py: 1, borderTop: 1, borderColor: 'divider', flexShrink: 0 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+              Kasvillisuusjakauma
             </Typography>
-
-            <NdviTimelineChart
-              entries={filteredImages}
-              selectedIndex={index}
-              onSelect={setIndex}
-            />
-
-          </Paper>
+            <Box sx={{ display: 'flex', height: 14, borderRadius: 1, overflow: 'hidden', width: '100%' }}>
+              {current.image.scale.map((cls, i) =>
+                cls.amount < 0.5 ? null : (
+                  <Tooltip key={i} title={`${cls.amount.toFixed(1)}%`} arrow>
+                    <Box sx={{ width: `${cls.amount}%`, bgcolor: cls.color, transition: 'width 0.4s ease' }} />
+                  </Tooltip>
+                )
+              )}
+            </Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.75 }}>
+              {current.image.scale.map((cls, i) => (
+                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: cls.color, flexShrink: 0 }} />
+                  <Typography variant="caption" color="text.secondary">{cls.amount.toFixed(1)}%</Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
         )}
-      </FullscreenablePanel>
+      </Paper>
 
-      {/* ── Oikea: NdviViewPanel tabeineen ── */}
-      <Box sx={{
-        flex: { md: '0 0 35%' },
-        minHeight: { xs: 420, md: 0 },
-        height: { md: '100%' },
-        // display+flexDirection tarvitaan jotta NdviViewPanelin height:'100%'
-        // toimii oikein — ilman näitä Paper romahtaa mobiilissa
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        <NdviViewPanel
-          fieldId={fieldId}
-          fieldName={fieldName}
-          geometry={geometry}
-          entry={current}
-          entries={filteredImages}
-          selectedIndex={index}
-          onSelect={setIndex}
-        />
-      </Box>
-
+      {/* ── Oikea: NdviViewPanel — piilotetaan fullscreenissä ── */}
+      {!isFullscreen && (
+        <Box sx={{
+          flex: { md: '0 0 35%' },
+          minHeight: { xs: 420, md: 0 },
+          height: { md: '100%' },
+          display: 'flex', flexDirection: 'column',
+        }}>
+          <NdviViewPanel
+            fieldId={fieldId}
+            fieldName={fieldName}
+            geometry={geometry}
+            entry={current}
+            entries={filteredImages}
+            selectedIndex={index}
+            onSelect={setIndex}
+          />
+        </Box>
+      )}
     </Box>
   );
 }

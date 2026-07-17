@@ -1,114 +1,173 @@
 // components/ndvi/NdviTimelineChart.tsx
+import { useState } from 'react';
 import {
-    LineChart, Line, XAxis, YAxis, CartesianGrid,
-    Tooltip, ReferenceDot, ResponsiveContainer, ReferenceLine
+  LineChart, Line, BarChart, Bar,
+  XAxis, YAxis, CartesianGrid,
+  Tooltip, ReferenceDot, ResponsiveContainer, ReferenceLine, Cell,
 } from 'recharts';
-import { Typography, Paper } from '@mui/material';
+import { Typography, Box, ToggleButtonGroup, ToggleButton } from '@mui/material';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import type { MergedNdviEntry } from '../../types';
 
-
 interface Props {
-    entries: MergedNdviEntry[];
-    selectedIndex: number;
-    onSelect: (index: number) => void;
+  entries: MergedNdviEntry[];
+  selectedIndex: number;
+  onSelect: (index: number) => void;
+  /** Oletuskorkeus kaavioalueelle pikseleinä. Oletusarvo 160. */
+  chartHeight?: number;
 }
 
 const NDVI_COLOR = (v: number) => {
-    if (v >= 0.6) return '#2E7D32';
-    if (v >= 0.4) return '#689F38';
-    if (v >= 0.2) return '#F9A825';
-    return '#C62828';
+  if (v >= 0.6) return '#2E7D32';
+  if (v >= 0.4) return '#689F38';
+  if (v >= 0.2) return '#F9A825';
+  return '#C62828';
 };
 
 const fmtDate = (iso: string) => {
-    const d = new Date(iso);
-    return `${d.getDate()}.${d.getMonth() + 1}.`;
+  const d = new Date(iso);
+  return `${d.getDate()}.${d.getMonth() + 1}.`;
 };
 
-export default function NdviTimelineChart({ entries, selectedIndex, onSelect }: Props) {
-    if (!entries.length) return null;
+type ChartType = 'line' | 'bar';
 
-    const data = entries.map((e, i) => ({
-        i,
-        date: e.generationtime,
-        mean: parseFloat(e.stats.average.toFixed(3)),
-        color: NDVI_COLOR(e.stats.average),
-    }));
+export default function NdviTimelineChart({ entries, selectedIndex, onSelect, chartHeight = 160 }: Props) {
+  const [chartType, setChartType] = useState<ChartType>('line');
 
-    const selected = data[selectedIndex];
+  if (!entries.length) return null;
 
-    return (
-        <Paper sx={{ p: 2, mt: 2,bgcolor: 'background.paper'  }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-                NDVI-keskiarvo — aikasarja
-            </Typography>
-            <ResponsiveContainer width="100%" height={160}>
-                <LineChart
-                    data={data}
-                    margin={{ top: 8, right: 16, left: -16, bottom: 0 }}
-                    onClick={(e: any) => {
-                        const payload = e?.activePayload?.[0]?.payload;
-                        if (payload) onSelect(payload.i);
-                    }}
-                    style={{ cursor: 'pointer' }}
-                >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
-                    <XAxis
-                        dataKey="date"
-                        tickFormatter={fmtDate}
-                        tick={{ fontSize: 10 }}
-                        interval="preserveStartEnd"
-                    />
-                    <YAxis
-                        domain={[0, 1]}
-                        tickFormatter={(v) => v.toFixed(1)}
-                        tick={{ fontSize: 10 }}
-                        width={36}
-                    />
-                    <Tooltip
-                        formatter={(v) => {
-                            const num = typeof v === 'number' ? v : Number(v);
-                            return [num.toFixed(3), 'NDVI avg'];
-                        }}
-                        labelFormatter={(label) =>
-                            new Date(label).toLocaleDateString('fi-FI')
-                        }
-                    />
+  const data = entries.map((e, i) => ({
+    i,
+    date: e.generationtime,
+    mean: parseFloat(e.stats.average.toFixed(3)),
+    color: NDVI_COLOR(e.stats.average),
+  }));
 
-                    <Line
-                        type="monotone"
-                        dataKey="mean"
-                        stroke="#689F38"
-                        strokeWidth={2}
-                        dot={(props) => {
-                            const { cx, cy, payload } = props;
-                            if (payload.i === selectedIndex) return <circle key={`dot-${payload.i}`} cx={cx} cy={cy} r={7} fill={payload.color} stroke="#fff" strokeWidth={2} />;
-                            return <g key={`dot-${payload.i}`} />;
-                        }}
-                        activeDot={false}
-                        isAnimationActive={false}
-                    />
-                    {/* Valittu piste korostettuna NDVI-luokan värillä */}
-                    {selected && (
-                        <>
-                            <ReferenceLine
-                                x={selected.date}
-                                stroke={selected.color}
-                                strokeDasharray="4 2"
-                                strokeWidth={1.5}
-                            />
-                            <ReferenceDot
-                                x={selected.date}
-                                y={selected.mean}
-                                r={7}
-                                fill={selected.color}
-                                stroke="#fff"
-                                strokeWidth={2}
-                            />
-                        </>
-                    )}
-                </LineChart>
-            </ResponsiveContainer>
-        </Paper>
-    );
+  const selected = data[selectedIndex];
+
+  const handleClick = (e: any) => {
+    const payload = e?.activePayload?.[0]?.payload ?? e?.activePayload?.[0];
+    const item = payload?.payload ?? payload;
+    if (item && typeof item.i === 'number') onSelect(item.i);
+  };
+
+  const commonProps = {
+    data,
+    margin: { top: 8, right: 16, left: -16, bottom: 0 },
+    onClick: handleClick,
+    style: { cursor: 'pointer' },
+  };
+
+  const axes = (
+    <>
+      <CartesianGrid strokeDasharray="3 3" stroke="#333" opacity={0.3} />
+      <XAxis
+        dataKey="date"
+        tickFormatter={fmtDate}
+        tick={{ fontSize: 10 }}
+        interval="preserveStartEnd"
+      />
+      <YAxis
+        domain={[0, 1]}
+        tickFormatter={(v) => v.toFixed(1)}
+        tick={{ fontSize: 10 }}
+        width={36}
+      />
+      <Tooltip
+        formatter={(v) => {
+          const num = typeof v === 'number' ? v : Number(v);
+          return [num.toFixed(3), 'NDVI avg'];
+        }}
+        labelFormatter={(label) => new Date(label).toLocaleDateString('fi-FI')}
+      />
+    </>
+  );
+
+  return (
+    <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="caption" color="text.secondary">
+          NDVI-keskiarvo — aikasarja
+        </Typography>
+        <ToggleButtonGroup
+          value={chartType}
+          exclusive
+          onChange={(_, v) => v && setChartType(v)}
+          size="small"
+          sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 0.75 } }}
+        >
+          <ToggleButton value="line" aria-label="Viivakuvaaja">
+            <ShowChartIcon fontSize="small" />
+          </ToggleButton>
+          <ToggleButton value="bar" aria-label="Pylväskuvaaja">
+            <BarChartIcon fontSize="small" />
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
+      <ResponsiveContainer width="100%" height={chartHeight}>
+        {chartType === 'line' ? (
+          <LineChart {...commonProps}>
+            {axes}
+            <Line
+              type="monotone"
+              dataKey="mean"
+              stroke="#689F38"
+              strokeWidth={2}
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                if (payload.i === selectedIndex)
+                  return <circle key={`dot-${payload.i}`} cx={cx} cy={cy} r={7} fill={payload.color} stroke="#fff" strokeWidth={2} />;
+                return <g key={`dot-${payload.i}`} />;
+              }}
+              activeDot={false}
+              isAnimationActive={false}
+            />
+            {selected && (
+              <>
+                <ReferenceLine
+                  x={selected.date}
+                  stroke={selected.color}
+                  strokeDasharray="4 2"
+                  strokeWidth={1.5}
+                />
+                <ReferenceDot
+                  x={selected.date}
+                  y={selected.mean}
+                  r={7}
+                  fill={selected.color}
+                  stroke="#fff"
+                  strokeWidth={2}
+                />
+              </>
+            )}
+          </LineChart>
+        ) : (
+          <BarChart {...commonProps}>
+            {axes}
+            <Bar dataKey="mean" isAnimationActive={false} radius={[2, 2, 0, 0]}>
+              {data.map((entry) => (
+                <Cell
+                  key={`cell-${entry.i}`}
+                  fill={entry.color}
+                  opacity={entry.i === selectedIndex ? 1 : 0.55}
+                  stroke={entry.i === selectedIndex ? '#fff' : 'none'}
+                  strokeWidth={entry.i === selectedIndex ? 1.5 : 0}
+                />
+              ))}
+            </Bar>
+            {selected && (
+              <ReferenceLine
+                x={selected.date}
+                stroke={selected.color}
+                strokeDasharray="4 2"
+                strokeWidth={1.5}
+              />
+            )}
+          </BarChart>
+        )}
+      </ResponsiveContainer>
+    </Box>
+  );
 }

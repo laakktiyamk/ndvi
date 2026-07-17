@@ -93,20 +93,24 @@ export default function AppLayout() {
           top: `${APPBAR_HEIGHT}px`,
           left: `${effectiveLeft}px`,
           right: 0,
-          // dvh huomioi iOS Safarin bottom barin, 100vh ei tee tätä
+          bottom: 0,
+          // Käytetään 100dvh (dynamic viewport height) iOS Safarin bottom barin takia.
+          // dvh ottaa huomioon selaimen UI:n koon — 100vh ei tee tätä ja sisältö
+          // voi jäädä bottom barin alle mobiililla.
+          // Fallback 100vh selaimille jotka eivät tue dvh:ta.
           height: 'calc(100vh - 64px)',
           '@supports (height: 100dvh)': {
             height: 'calc(100dvh - 64px)',
           },
-          // display:flex + flexDirection:column antaa lapsille mahdollisuuden
-          // käyttää height:'100%' — position:fixed ei periydy ilman tätä,
-          // joten FieldsPage / NdviMapViewer romahtivat tai jäivät piiloon.
-          display: 'flex',
-          flexDirection: 'column',
-          // overflow:hidden täällä — scroll hoidetaan sivukohtaisesti sisällä.
-          // Aiempi overflow:auto aiheutti sen että koko sivu scrollasi
-          // eikä sisältö saanut oikeaa korkeutta flexissä.
-          overflow: 'hidden',
+          overflow: 'auto',
+          // KORJAUS: position:fixed + overflow:auto -yhdistelmä jättää sisällön
+          // renderöimättä iOS Safarissa/WebKit-mobiilissa kunnes käyttäjä koskettaa
+          // ruutua. WebkitOverflowScrolling pakottaa natiivin momentum-scrollin
+          // (ja sen mukana oikean layout/paint-käyttäytymisen), translateZ(0)
+          // pakottaa oman compositing-layerin jolloin selain piirtää sisällön
+          // heti eikä vasta ensimmäisen scroll/touch-eventin jälkeen.
+          WebkitOverflowScrolling: 'touch',
+          transform: 'translateZ(0)',
           bgcolor: 'background.default',
           p: { xs: 2, sm: 3 },
           transition: 'left 0.2s ease',

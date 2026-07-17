@@ -3,7 +3,7 @@ import { Box, Tabs, Tab, Paper, Typography, CircularProgress, Alert } from '@mui
 import { useAppStore } from '../../store/appStore';
 import type { MergedNdviEntry } from '../../types';
 
-import ChartTab from './tabs/ChartTab';
+import NdviTimelineChart from './NdviTimelineChart';
 import StatisticsTab from './tabs/StatisticsTab';
 import OnMapTab from './tabs/OnMapTab';
 import LocationTab from './tabs/LocationTab';
@@ -93,12 +93,13 @@ export default function NdviViewPanel({
       </Tabs>
 
       {/* Tab-sisältö */}
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
         {tab === 'chart' && (
-          <ChartTab
+          <NdviTimelineChart
             entries={entries}
             selectedIndex={selectedIndex}
             onSelect={onSelect}
+            chartHeight={220}
           />
         )}
 
