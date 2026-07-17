@@ -11,12 +11,20 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import NavDrawer from './NavDrawer';
+import SettingsMenu, { type Lang } from './SettingsMenu';
 import { useAuthStore } from '../../store/authStore';
 
 const DRAWER_WIDTH = 240;
 const APPBAR_HEIGHT = 64;
 
-export default function AppLayout() {
+interface Props {
+  themeMode: 'light' | 'dark';
+  onToggleTheme: () => void;
+  lang: Lang;
+  onToggleLang: () => void;
+}
+
+export default function AppLayout({ themeMode, onToggleTheme, lang, onToggleLang }: Props) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -62,16 +70,26 @@ export default function AppLayout() {
           </Box>
 
           {user && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Avatar sx={{ width: 28, height: 28, fontSize: 13, bgcolor: 'primary.dark' }}>
                 {user.username?.[0]?.toUpperCase()}
               </Avatar>
               {!isMobile && (
-                <Typography variant="body2" color="inherit">{user.username}</Typography>
+                <Typography variant="body2" color="inherit" sx={{ mx: 0.5 }}>
+                  {user.username}
+                </Typography>
               )}
-              <IconButton color="inherit" onClick={logout} aria-label="Kirjaudu ulos" size="small">
-                <LogoutIcon fontSize="small" />
-              </IconButton>
+              <SettingsMenu
+                themeMode={themeMode}
+                onToggleTheme={onToggleTheme}
+                lang={lang}
+                onToggleLang={onToggleLang}
+              />
+              <Tooltip title={lang === 'fi' ? 'Kirjaudu ulos' : 'Logout'}>
+                <IconButton color="inherit" onClick={logout} aria-label="Kirjaudu ulos" size="small">
+                  <LogoutIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
             </Box>
           )}
         </Toolbar>
@@ -94,21 +112,11 @@ export default function AppLayout() {
           left: `${effectiveLeft}px`,
           right: 0,
           bottom: 0,
-          // Käytetään 100dvh (dynamic viewport height) iOS Safarin bottom barin takia.
-          // dvh ottaa huomioon selaimen UI:n koon — 100vh ei tee tätä ja sisältö
-          // voi jäädä bottom barin alle mobiililla.
-          // Fallback 100vh selaimille jotka eivät tue dvh:ta.
           height: 'calc(100vh - 64px)',
           '@supports (height: 100dvh)': {
             height: 'calc(100dvh - 64px)',
           },
           overflow: 'auto',
-          // KORJAUS: position:fixed + overflow:auto -yhdistelmä jättää sisällön
-          // renderöimättä iOS Safarissa/WebKit-mobiilissa kunnes käyttäjä koskettaa
-          // ruutua. WebkitOverflowScrolling pakottaa natiivin momentum-scrollin
-          // (ja sen mukana oikean layout/paint-käyttäytymisen), translateZ(0)
-          // pakottaa oman compositing-layerin jolloin selain piirtää sisällön
-          // heti eikä vasta ensimmäisen scroll/touch-eventin jälkeen.
           WebkitOverflowScrolling: 'touch',
           transform: 'translateZ(0)',
           bgcolor: 'background.default',

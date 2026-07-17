@@ -3,15 +3,26 @@ import {
   Box, Paper, Typography, IconButton, Chip,
   CircularProgress, Alert, Skeleton,
   Select, MenuItem, FormControl, InputLabel, Tooltip,
-  useTheme,
+  useTheme, useMediaQuery,
+  Accordion, AccordionSummary, AccordionDetails,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ImageIcon from '@mui/icons-material/Image';
+import ShowChartIcon from '@mui/icons-material/ShowChart';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import MapIcon from '@mui/icons-material/Map';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { useAppStore } from '../../store/appStore';
 import NdviDatePicker from './NdviDatePicker';
+import NdviTimelineChart from './NdviTimelineChart';
 import NdviViewPanel from './NdviViewPanel';
+import StatisticsTab from './tabs/StatisticsTab';
+import OnMapTab from './tabs/OnMapTab';
+import LocationTab from './tabs/LocationTab';
 
 interface Props {
   fieldId: string;
@@ -26,8 +37,62 @@ const fmt = (date: string) =>
 
 const getYear = (date: string) => new Date(date).getFullYear();
 
+// Accordion-paneeli johon Leaflet-tabit mountataan vasta avattaessa.
+// expanded-prop välitetään jotta invalidateSize voidaan kutsua avauksen jälkeen.
+interface LeafletAccordionProps {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  expanded: boolean;
+  onChange: (id: string) => void;
+  children: React.ReactNode;
+  contentHeight?: number;
+}
+
+function LeafletAccordion({ id, label, icon, expanded, onChange, children, contentHeight = 340 }: LeafletAccordionProps) {
+  const [everExpanded, setEverExpanded] = useState(false);
+
+  useEffect(() => {
+    if (expanded) setEverExpanded(true);
+  }, [expanded]);
+
+  return (
+    <Accordion
+      expanded={expanded}
+      onChange={() => onChange(id)}
+      disableGutters
+      elevation={0}
+      sx={{
+        border: 1, borderColor: 'divider',
+        borderRadius: '8px !important',
+        '&:before': { display: 'none' },
+        overflow: 'hidden',
+      }}
+    >
+      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {icon}
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>{label}</Typography>
+        </Box>
+      </AccordionSummary>
+      {/* FIX: display:flex + flexDirection:column lisätty — ilman näitä
+          lapsien (OnMapTab/LocationTab) flex:1/height:100% -pohjainen
+          korkeuden laskenta ei toimi, koska AccordionDetailsin oletus
+          display on 'block'. Tämä on syy miksi Leaflet-kartat eivät
+          näkyneet mobiilissa. */}
+      <AccordionDetails sx={{ p: 0, height: contentHeight, display: 'flex', flexDirection: 'column' }}>
+        {/* Mountataan vasta kun accordion on kerran avattu — estää
+            Leafletin height:0 -ongelman ennen kuin kontti on näkyvissä */}
+        {everExpanded && children}
+      </AccordionDetails>
+    </Accordion>
+  );
+}
+
 export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
@@ -35,8 +100,10 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const [imgLoaded, setImgLoaded] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Mobiili-accordion: yksi auki kerrallaan, 'image' auki oletuksena
+  const [expanded, setExpanded] = useState<string>('image');
 
-  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash } = useAppStore();
+  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData } = useAppStore();
 
   const loading = imagesLoading && activeGeometryHash !== fieldId;
   const error = imagesError;
@@ -90,6 +157,10 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     if (targetIdx !== -1) setIndex(targetIdx);
   };
 
+  const handleAccordion = (id: string) => {
+    setExpanded(prev => prev === id ? '' : id);
+  };
+
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
       <CircularProgress />
@@ -103,198 +174,278 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const isFirst = index === 0;
   const isLast = index === filteredImages.length - 1;
   const dataUrl = current.image?.image.dataUrl;
+  const currentWeather = weatherData.find(w => w.sentinelid === current.sentinelid);
 
+  // ── NDVI-kuvaviewer (yhteinen molemmille layouteille) ────────────────────
+  const imageViewer = (
+    <>
+      {/* Toolbar */}
+      <Box sx={{
+        px: 2, py: 1,
+        borderBottom: 1, borderColor: 'divider',
+        display: 'flex', alignItems: 'center', gap: 1.5,
+        flexWrap: 'wrap', flexShrink: 0,
+      }}>
+        <FormControl size="small" sx={{ minWidth: 100 }}>
+          <InputLabel>Vuosi</InputLabel>
+          <Select value={selectedYear} label="Vuosi" onChange={(e) => setSelectedYear(Number(e.target.value))}>
+            {availableYears.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+          </Select>
+        </FormControl>
+        <NdviDatePicker
+          value={selectedDate}
+          selectedYear={selectedYear}
+          onChange={handleDateChange}
+          availableDates={filteredImages.map(e => new Date(e.generationtime))}
+        />
+        <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+          {filteredImages.length} kuvaa
+        </Typography>
+        {/* Fullscreen-nappi vain desktopilla — mobiilissa accordion riittää */}
+        {!isMobile && (
+          <IconButton onClick={() => setIsFullscreen(v => !v)} size="small" sx={{ ml: 'auto' }}
+            aria-label={isFullscreen ? 'Sulje koko ruutu' : 'Avaa koko ruutu'}>
+            {isFullscreen ? <CloseFullscreenIcon fontSize="small" /> : <OpenInFullIcon fontSize="small" />}
+          </IconButton>
+        )}
+      </Box>
+
+      {/* Kuva-alue */}
+      <Box
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        sx={{
+          flex: 1, position: 'relative',
+          bgcolor: 'background.default',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          overflow: 'hidden',
+          minHeight: { xs: 260, md: 0 },
+          userSelect: 'none',
+        }}
+      >
+        {!imgLoaded && (
+          <Skeleton variant="rectangular" sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        )}
+        {dataUrl && (
+          <Box
+            component="img"
+            src={dataUrl}
+            alt={`NDVI ${fmt(imageDate)}`}
+            onLoad={() => setImgLoaded(true)}
+            sx={{
+              width: '100%', height: '100%',
+              objectFit: 'contain',
+              opacity: imgLoaded ? 1 : 0,
+              transition: 'opacity 0.3s',
+              pointerEvents: 'none',
+              filter: 'blur(1px)',
+            }}
+          />
+        )}
+        <Chip
+          label={fmt(imageDate)}
+          size="small"
+          sx={{
+            position: 'absolute', bottom: 12, left: '50%',
+            transform: 'translateX(-50%)',
+            bgcolor: 'rgba(0,0,0,0.65)', color: '#fff',
+            fontWeight: 600, backdropFilter: 'blur(4px)',
+            pointerEvents: 'none',
+          }}
+        />
+      </Box>
+
+      {/* Navigointipalkki */}
+      <Box sx={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        px: 2, py: 1.5, borderTop: 1, borderColor: 'divider', flexShrink: 0,
+      }}>
+        <IconButton onClick={prev} disabled={isFirst} size="small" aria-label="Edellinen">
+          <ArrowBackIosNewIcon fontSize="small" />
+        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {filteredImages.slice(Math.max(0, index - 10), index + 10).map((entry, i) => {
+            const realIdx = Math.max(0, index - 10) + i;
+            const isActive = realIdx === index;
+            return (
+              <Box key={entry.sentinelid} onClick={() => setIndex(realIdx)} role="button"
+                aria-label={`Kuva ${realIdx + 1}`}
+                sx={{ p: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', userSelect: 'none', WebkitTapHighlightColor: 'transparent' }}>
+                <Box sx={{
+                  width: isActive ? 10 : 6, height: isActive ? 10 : 6,
+                  borderRadius: '50%',
+                  bgcolor: isActive ? 'primary.main' : 'action.disabled',
+                  transition: 'all 0.2s', flexShrink: 0,
+                }} />
+              </Box>
+            );
+          })}
+        </Box>
+        <IconButton onClick={next} disabled={isLast} size="small" aria-label="Seuraava">
+          <ArrowForwardIosIcon fontSize="small" />
+        </IconButton>
+      </Box>
+
+      {/* Kasvillisuusjakauma */}
+      {current.image?.scale && current.image.scale.length > 0 && (
+        <Box sx={{ px: 2, py: 1, borderTop: 1, borderColor: 'divider', flexShrink: 0 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+            Kasvillisuusjakauma
+          </Typography>
+          <Box sx={{ display: 'flex', height: 14, borderRadius: 1, overflow: 'hidden', width: '100%' }}>
+            {current.image.scale.map((cls, i) =>
+              cls.amount < 0.5 ? null : (
+                <Tooltip key={i} title={`${cls.amount.toFixed(1)}%`} arrow>
+                  <Box sx={{ width: `${cls.amount}%`, bgcolor: cls.color, transition: 'width 0.4s ease' }} />
+                </Tooltip>
+              )
+            )}
+          </Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.75 }}>
+            {current.image.scale.map((cls, i) => (
+              <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: cls.color, flexShrink: 0 }} />
+                <Typography variant="caption" color="text.secondary">{cls.amount.toFixed(1)}%</Typography>
+              </Box>
+            ))}
+          </Box>
+        </Box>
+      )}
+    </>
+  );
+
+  // ── MOBIILI: accordion-layout ────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+
+        {/* Kuva-accordion */}
+        <Accordion
+          expanded={expanded === 'image'}
+          onChange={() => handleAccordion('image')}
+          disableGutters
+          elevation={0}
+          sx={{
+            border: 1, borderColor: 'divider',
+            borderRadius: '8px !important',
+            '&:before': { display: 'none' },
+            overflow: 'hidden',
+          }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ImageIcon fontSize="small" color="primary" />
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                NDVI-kuva — {fmt(imageDate)}
+              </Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', height: 420 }}>
+              {imageViewer}
+            </Box>
+          </AccordionDetails>
+        </Accordion>
+
+        {/* Kaavio-accordion */}
+        <Accordion
+          expanded={expanded === 'chart'}
+          onChange={() => handleAccordion('chart')}
+          disableGutters elevation={0}
+          sx={{ border: 1, borderColor: 'divider', borderRadius: '8px !important', '&:before': { display: 'none' } }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ShowChartIcon fontSize="small" color="primary" />
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>Kaavio</Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0 }}>
+            <NdviTimelineChart
+              entries={filteredImages}
+              selectedIndex={index}
+              onSelect={setIndex}
+              chartHeight={200}
+            />
+          </AccordionDetails>
+        </Accordion>
+
+        {/* Tilastot-accordion */}
+        <Accordion
+          expanded={expanded === 'statistics'}
+          onChange={() => handleAccordion('statistics')}
+          disableGutters elevation={0}
+          sx={{ border: 1, borderColor: 'divider', borderRadius: '8px !important', '&:before': { display: 'none' } }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <BarChartIcon fontSize="small" color="primary" />
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>Tilastot</Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0 }}>
+            <StatisticsTab entry={current} weather={currentWeather} />
+          </AccordionDetails>
+        </Accordion>
+
+        {/* Kartalla-accordion — Leaflet mountataan vasta avattaessa */}
+        <LeafletAccordion
+          id="onmap"
+          label="Kartalla"
+          icon={<MapIcon fontSize="small" color="primary" />}
+          expanded={expanded === 'onmap'}
+          onChange={handleAccordion}
+          contentHeight={340}
+        >
+          <OnMapTab
+            entry={current}
+            entries={filteredImages}
+            selectedIndex={index}
+            onSelect={setIndex}
+          />
+        </LeafletAccordion>
+
+        {/* Sijainti-accordion — Leaflet mountataan vasta avattaessa */}
+        <LeafletAccordion
+          id="location"
+          label="Sijainti"
+          icon={<LocationOnIcon fontSize="small" color="primary" />}
+          expanded={expanded === 'location'}
+          onChange={handleAccordion}
+          contentHeight={340}
+        >
+          {geometry
+            ? <LocationTab geometry={geometry} fieldName={fieldName} />
+            : <Alert severity="info" sx={{ m: 2 }}>Geometriatieto ei saatavilla.</Alert>
+          }
+        </LeafletAccordion>
+
+      </Box>
+    );
+  }
+
+  // ── DESKTOP: rinnakkainen layout ─────────────────────────────────────────
   return (
-    <Box sx={{
-      display: 'flex',
-      flexDirection: { xs: 'column', md: 'row' },
-      gap: 2,
-      height: { xs: 'auto', md: '100%' },
-    }}>
+    <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, height: '100%' }}>
 
-      {/* ── Vasen: NDVI-kuvaviewer (img + swipe) ── */}
       <Paper
         sx={{
           ...(isFullscreen ? {
-            position: 'fixed',
-            inset: 0,
-            zIndex: theme.zIndex.modal,
-            borderRadius: 0,
+            position: 'fixed', inset: 0,
+            zIndex: theme.zIndex.modal, borderRadius: 0,
           } : {
-            flex: { md: '1 1 65%' },
-            height: { xs: 'auto', md: '100%' },
-            minHeight: { md: 0 },
+            flex: '1 1 65%',
+            height: '100%', minHeight: 0,
           }),
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
-        {/* Toolbar */}
-        <Box sx={{
-          px: 2, py: 1,
-          borderBottom: 1, borderColor: 'divider',
-          display: 'flex', alignItems: 'center', gap: 1.5,
-          flexWrap: 'wrap', flexShrink: 0,
-        }}>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <InputLabel>Vuosi</InputLabel>
-            <Select
-              value={selectedYear}
-              label="Vuosi"
-              onChange={(e) => setSelectedYear(Number(e.target.value))}
-            >
-              {availableYears.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <NdviDatePicker
-            value={selectedDate}
-            selectedYear={selectedYear}
-            onChange={handleDateChange}
-            availableDates={filteredImages.map(e => new Date(e.generationtime))}
-          />
-          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-            {filteredImages.length} kuvaa
-          </Typography>
-          <IconButton
-            onClick={() => setIsFullscreen(v => !v)}
-            size="small"
-            sx={{ ml: 'auto' }}
-            aria-label={isFullscreen ? 'Sulje koko ruutu' : 'Avaa koko ruutu'}
-          >
-            {isFullscreen ? <CloseFullscreenIcon fontSize="small" /> : <OpenInFullIcon fontSize="small" />}
-          </IconButton>
-        </Box>
-
-        {/* Kuva-alue — swipe toimii koska ei Leaflet-karttaa tässä */}
-        <Box
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          sx={{
-            flex: 1,
-            position: 'relative',
-            bgcolor: 'background.paper',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden',
-            minHeight: { xs: 300, md: 0 },
-            userSelect: 'none',
-          }}
-        >
-          {!imgLoaded && (
-            <Skeleton
-              variant="rectangular"
-              sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-            />
-          )}
-          {dataUrl && (
-            <Box
-              component="img"
-              src={dataUrl}
-              alt={`NDVI ${fmt(imageDate)}`}
-              onLoad={() => setImgLoaded(true)}
-              sx={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                opacity: imgLoaded ? 1 : 0,
-                transition: 'opacity 0.3s',
-                pointerEvents: 'none',
-                filter: 'blur(1px)',
-              }}
-            />
-          )}
-          <Chip
-            label={fmt(imageDate)}
-            size="small"
-            sx={{
-              position: 'absolute', bottom: 12, left: '50%',
-              transform: 'translateX(-50%)',
-              bgcolor: 'rgba(0,0,0,0.65)', color: '#fff',
-              fontWeight: 600, backdropFilter: 'blur(4px)',
-              pointerEvents: 'none',
-            }}
-          />
-        </Box>
-
-        {/* Navigointipalkki */}
-        <Box sx={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          px: 2, py: 1.5, borderTop: 1, borderColor: 'divider', flexShrink: 0,
-        }}>
-          <IconButton onClick={prev} disabled={isFirst} size="small" aria-label="Edellinen">
-            <ArrowBackIosNewIcon fontSize="small" />
-          </IconButton>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
-            {filteredImages.slice(Math.max(0, index - 10), index + 10).map((entry, i) => {
-              const realIdx = Math.max(0, index - 10) + i;
-              const isActive = realIdx === index;
-              return (
-                <Box
-                  key={entry.sentinelid}
-                  onClick={() => setIndex(realIdx)}
-                  role="button"
-                  aria-label={`Kuva ${realIdx + 1}`}
-                  sx={{
-                    p: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', userSelect: 'none', WebkitTapHighlightColor: 'transparent',
-                  }}
-                >
-                  <Box sx={{
-                    width: isActive ? 10 : 6, height: isActive ? 10 : 6,
-                    borderRadius: '50%',
-                    bgcolor: isActive ? 'primary.main' : 'action.disabled',
-                    transition: 'all 0.2s', flexShrink: 0,
-                  }} />
-                </Box>
-              );
-            })}
-          </Box>
-          <IconButton onClick={next} disabled={isLast} size="small" aria-label="Seuraava">
-            <ArrowForwardIosIcon fontSize="small" />
-          </IconButton>
-        </Box>
-
-        {/* Kasvillisuusjakauma */}
-        {current.image?.scale && current.image.scale.length > 0 && (
-          <Box sx={{ px: 2, py: 1, borderTop: 1, borderColor: 'divider', flexShrink: 0 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-              Kasvillisuusjakauma
-            </Typography>
-            <Box sx={{ display: 'flex', height: 14, borderRadius: 1, overflow: 'hidden', width: '100%' }}>
-              {current.image.scale.map((cls, i) =>
-                cls.amount < 0.5 ? null : (
-                  <Tooltip key={i} title={`${cls.amount.toFixed(1)}%`} arrow>
-                    <Box sx={{ width: `${cls.amount}%`, bgcolor: cls.color, transition: 'width 0.4s ease' }} />
-                  </Tooltip>
-                )
-              )}
-            </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.75 }}>
-              {current.image.scale.map((cls, i) => (
-                <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: cls.color, flexShrink: 0 }} />
-                  <Typography variant="caption" color="text.secondary">{cls.amount.toFixed(1)}%</Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        )}
+        {imageViewer}
       </Paper>
 
-      {/* ── Oikea: NdviViewPanel tabeineen ──
-          height: eksplisiittisesti sekä xs että md jotta flex-lapset
-          (OnMapTab, LocationTab) saavat height:'100%' oikein mobiilissa.
-          Ilman xs-korkeutta Leaflet-tabit saavat height:0. */}
       {!isFullscreen && (
-        <Box sx={{
-          flex: { md: '0 0 35%' },
-          height: { xs: 500, md: '100%' },
-          minHeight: { md: 0 },
-          display: 'flex',
-          flexDirection: 'column',
-        }}>
+        <Box sx={{ flex: '0 0 35%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           <NdviViewPanel
             fieldId={fieldId}
             fieldName={fieldName}
