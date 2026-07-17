@@ -22,71 +22,65 @@ function getCentroid(geometry: { type: string; coordinates: unknown[] }): [numbe
       const lng = allPoints.reduce((s, c) => s + c[0], 0) / allPoints.length;
       return [lat, lng];
     }
-  } catch {
-    // ei tehdä mitään
-  }
+  } catch { /* ei tehdä mitään */ }
   return null;
 }
 
 export default function LocationTab({ geometry, fieldName }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);
+  const mapInitialized = useRef(false);
 
   const centroid = useMemo(() => getCentroid(geometry), [geometry]);
 
+  // rAF varmistaa että flex-kontainerilla on oikea koko ennen Leaflet-initia
   useEffect(() => {
-    if (!mapRef.current || !centroid) return;
-    if (leafletRef.current) return;
+    if (!centroid || mapInitialized.current) return;
 
-    const map = L.map(mapRef.current, {
-      center: [65.5, 26.0], // Suomi kokonaisuudessaan näkyvissä
-      zoom: 5,
-      zoomControl: true,
+    const raf = requestAnimationFrame(() => {
+      if (!mapRef.current || mapInitialized.current) return;
+      mapInitialized.current = true;
+
+      const map = L.map(mapRef.current, {
+        center: [65.5, 26.0],
+        zoom: 5,
+        zoomControl: true,
+      });
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map);
+
+      const marker = L.marker(centroid);
+      if (fieldName) marker.bindPopup(`<b>${fieldName}</b>`).openPopup();
+      marker.addTo(map);
+
+      leafletRef.current = map;
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-      maxZoom: 19,
-    }).addTo(map);
-
-    const marker = L.marker(centroid);
-    if (fieldName) {
-      marker.bindPopup(`<b>${fieldName}</b>`).openPopup();
-    }
-    marker.addTo(map);
-
-    leafletRef.current = map;
-
     return () => {
-      if (leafletRef.current) {
-        leafletRef.current.remove();
-        leafletRef.current = null;
-      }
+      cancelAnimationFrame(raf);
+      leafletRef.current?.remove();
+      leafletRef.current = null;
+      mapInitialized.current = false;
     };
   }, [centroid, fieldName]);
 
   if (!centroid) {
-    return (
-      <Alert severity="warning" sx={{ m: 2 }}>
-        Sijaintia ei voitu laskea geometriasta.
-      </Alert>
-    );
+    return <Alert severity="warning" sx={{ m: 2 }}>Sijaintia ei voitu laskea geometriasta.</Alert>;
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider' }}>
+    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
         <Typography variant="caption" color="text.secondary">
           AOI:n sijainti — {fieldName ?? 'Nimetön alue'}
         </Typography>
       </Box>
       <Box
         ref={mapRef}
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          '& .leaflet-container': { height: '100%' },
-        }}
+        sx={{ flex: 1, minHeight: 0, '& .leaflet-container': { height: '100%' } }}
       />
     </Box>
   );

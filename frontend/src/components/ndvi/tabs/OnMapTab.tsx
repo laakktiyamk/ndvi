@@ -6,110 +6,95 @@ import type { MergedNdviEntry } from '../../../types';
 
 interface Props {
   entry: MergedNdviEntry;
+  entries: MergedNdviEntry[];
+  selectedIndex: number;
+  onSelect: (index: number) => void;
 }
 
 const fmt = (date: string) =>
-  new Date(date).toLocaleDateString('fi-FI', {
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric',
-  });
+  new Date(date).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
-export default function OnMapTab({ entry }: Props) {
+export default function OnMapTab({ entry, entries, selectedIndex, onSelect }: Props) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);
   const overlayRef = useRef<L.ImageOverlay | null>(null);
+  const mapInitialized = useRef(false);
 
   const image = entry.image;
 
-  // Alusta kartta kerran
+  // Alustus rAF:lla — varmistaa että DOM-elementillä on oikea koko
+  // ennen Leaflet-initia. Ilman tätä Leaflet saa height:0 flex-kontainerissa.
   useEffect(() => {
-    if (!mapRef.current || !image) return;
+    if (!image || mapInitialized.current) return;
 
-    const bounds: L.LatLngBoundsExpression = [
-      [image.image.minY, image.image.minX], // SW
-      [image.image.maxY, image.image.maxX], // NE
-    ];
+    const raf = requestAnimationFrame(() => {
+      if (!mapRef.current || mapInitialized.current) return;
+      mapInitialized.current = true;
 
-    if (!leafletRef.current) {
-      const map = L.map(mapRef.current, {
-        zoomControl: true,
-        attributionControl: true,
-      });
+      const bounds: L.LatLngBoundsExpression = [
+        [image.image.minY, image.image.minX],
+        [image.image.maxY, image.image.maxX],
+      ];
+
+      const map = L.map(mapRef.current, { zoomControl: true, attributionControl: true });
 
       L.tileLayer(
         'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        {
-          attribution: 'Tiles &copy; Esri &mdash; Esri, Maxar, GeoEye, Earthstar Geographics',
-          maxZoom: 19,
-        }
+        { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
       ).addTo(map);
 
+      overlayRef.current = L.imageOverlay(image.image.dataUrl, bounds, {
+        opacity: 0.85,
+        interactive: false,
+      }).addTo(map);
+
+      map.fitBounds(bounds, { padding: [20, 20] });
       leafletRef.current = map;
-    }
-
-    const map = leafletRef.current;
-
-    if (overlayRef.current) {
-      overlayRef.current.remove();
-    }
-
-    const overlay = L.imageOverlay(image.image.dataUrl, bounds, {
-      opacity: 0.85,
-      interactive: false,
-    }).addTo(map);
-
-    overlayRef.current = overlay;
-    map.fitBounds(bounds, { padding: [20, 20] });
+    });
 
     return () => {
-      if (leafletRef.current) {
-        leafletRef.current.remove();
-        leafletRef.current = null;
-        overlayRef.current = null;
-      }
+      cancelAnimationFrame(raf);
+      leafletRef.current?.remove();
+      leafletRef.current = null;
+      overlayRef.current = null;
+      mapInitialized.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Päivitä overlay kun entry vaihtuu
   useEffect(() => {
     if (!leafletRef.current || !image) return;
-
-    const bounds: L.LatLngBoundsExpression = [
+    const bounds = L.latLngBounds([
       [image.image.minY, image.image.minX],
       [image.image.maxY, image.image.maxX],
-    ];
-
+    ]);
     if (overlayRef.current) {
       overlayRef.current.setUrl(image.image.dataUrl);
-      overlayRef.current.setBounds(L.latLngBounds(bounds));
+      overlayRef.current.setBounds(bounds);
     }
-  }, [entry.sentinelid, image]);
+  }, [entry.sentinelid]);
 
   if (!image) {
-    return (
-      <Alert severity="info" sx={{ m: 2 }}>
-        Tälle päivälle ei ole kuvaoverlaylle tarvittavia tietoja.
-      </Alert>
-    );
+    return <Alert severity="info" sx={{ m: 2 }}>Tälle päivälle ei ole kuvaoverlaylle tarvittavia tietoja.</Alert>;
   }
 
+  const isFirst = selectedIndex === 0;
+  const isLast = selectedIndex === entries.length - 1;
+
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider' }}>
+    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
         <Typography variant="caption" color="text.secondary">
           NDVI satelliittikuva kartalla — {fmt(entry.generationtime)}
         </Typography>
       </Box>
-      <Box
-        ref={mapRef}
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          '& .leaflet-container': { height: '100%', background: '#1a1a2e' },
-        }}
-      />
+
+      <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <Box
+          ref={mapRef}
+          sx={{ height: '100%', width: '100%', '& .leaflet-container': { height: '100%' } }}
+        />
+      </Box>
     </Box>
   );
 }

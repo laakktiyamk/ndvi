@@ -92,8 +92,11 @@ export default function NdviViewPanel({
         <Tab label="Sijainti"   value="location"   />
       </Tabs>
 
-      {/* Tab-sisältö */}
-      <Box sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+      {/* Tab-sisältö
+          display:flex + flexDirection:column tarvitaan jotta Leaflet-pohjaiset
+          tabit (OnMapTab, LocationTab) saavat height:'100%' oikein.
+          Chart/Statistics scrollaavat overflow:auto:lla normaalisti. */}
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {tab === 'chart' && (
           <NdviTimelineChart
             entries={entries}
@@ -111,7 +114,12 @@ export default function NdviViewPanel({
         )}
 
         {tab === 'onmap' && (
-          <OnMapTab entry={entry} />
+          <OnMapTab
+            entry={entry}
+            entries={entries}
+            selectedIndex={selectedIndex}
+            onSelect={onSelect}
+          />
         )}
 
         {tab === 'location' && (

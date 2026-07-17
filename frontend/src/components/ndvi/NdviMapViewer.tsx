@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Box, Paper, Typography, IconButton, Chip,
-  CircularProgress, Alert,
+  CircularProgress, Alert, Skeleton,
   Select, MenuItem, FormControl, InputLabel, Tooltip,
   useTheme,
 } from '@mui/material';
@@ -9,8 +9,6 @@ import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { useAppStore } from '../../store/appStore';
 import NdviDatePicker from './NdviDatePicker';
 import NdviViewPanel from './NdviViewPanel';
@@ -23,9 +21,7 @@ interface Props {
 
 const fmt = (date: string) =>
   new Date(date).toLocaleDateString('fi-FI', {
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric',
+    day: 'numeric', month: 'numeric', year: 'numeric',
   });
 
 const getYear = (date: string) => new Date(date).getFullYear();
@@ -36,13 +32,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const leafletRef = useRef<L.Map | null>(null);
-  const overlayRef = useRef<L.ImageOverlay | null>(null);
-  const mapInitialized = useRef(false);
 
   const { ndviEntries, imagesLoading, imagesError, activeGeometryHash } = useAppStore();
 
@@ -88,6 +80,8 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     if (diff < -50) prev();
   };
 
+  useEffect(() => { setImgLoaded(false); }, [index]);
+
   const handleDateChange = (date: Date | null) => {
     if (!date) return;
     const targetIdx = filteredImages.findIndex(
@@ -95,82 +89,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     );
     if (targetIdx !== -1) setIndex(targetIdx);
   };
-
-  // ── Leaflet init ─────────────────────────────────────────────────────────
-  // Käytetään requestAnimationFrame varmistamaan että DOM-elementillä on
-  // oikea koko ennen kuin Leaflet alustetaan. Ilman tätä Leaflet saa
-  // height:0 ja tile-layer / overlay ei renderöidy.
-  useEffect(() => {
-    if (filteredImages.length === 0 || mapInitialized.current) return;
-
-    const entry = filteredImages[index];
-    if (!entry?.image) return;
-
-    const raf = requestAnimationFrame(() => {
-      if (!mapContainerRef.current || mapInitialized.current) return;
-
-      mapInitialized.current = true;
-
-      const map = L.map(mapContainerRef.current, {
-        zoomControl: true,
-        attributionControl: true,
-      });
-
-      L.tileLayer(
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-        { attribution: 'Tiles &copy; Esri', maxZoom: 19 }
-      ).addTo(map);
-
-      const { minX, minY, maxX, maxY, dataUrl } = entry.image.image;
-      const bounds: L.LatLngBoundsExpression = [[minY, minX], [maxY, maxX]];
-
-      overlayRef.current = L.imageOverlay(dataUrl, bounds, {
-        opacity: 0.85,
-        interactive: false,
-      }).addTo(map);
-
-      map.fitBounds(bounds, { padding: [20, 20] });
-      leafletRef.current = map;
-    });
-
-    return () => {
-      cancelAnimationFrame(raf);
-      if (leafletRef.current) {
-        leafletRef.current.remove();
-        leafletRef.current = null;
-        overlayRef.current = null;
-        mapInitialized.current = false;
-      }
-    };
-  }, [filteredImages.length]);
-
-  // ── Overlay update kun index vaihtuu ─────────────────────────────────────
-  useEffect(() => {
-    if (!leafletRef.current || filteredImages.length === 0) return;
-    const entry = filteredImages[index];
-    if (!entry?.image) return;
-
-    const { minX, minY, maxX, maxY, dataUrl } = entry.image.image;
-    const bounds = L.latLngBounds([[minY, minX], [maxY, maxX]]);
-
-    if (overlayRef.current) {
-      overlayRef.current.setUrl(dataUrl);
-      overlayRef.current.setBounds(bounds);
-    } else {
-      overlayRef.current = L.imageOverlay(dataUrl, bounds, { opacity: 0.85, interactive: false })
-        .addTo(leafletRef.current);
-    }
-  }, [index]);
-
-  // ── invalidateSize fullscreen-muutoksessa ─────────────────────────────────
-  // Leaflet ei tiedä kontin koon muuttuneen ilman tätä kutsua.
-  useEffect(() => {
-    if (!leafletRef.current) return;
-    const timer = setTimeout(() => {
-      leafletRef.current?.invalidateSize();
-    }, 250); // transition kestää 200ms
-    return () => clearTimeout(timer);
-  }, [isFullscreen]);
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -184,6 +102,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const imageDate = current.generationtime;
   const isFirst = index === 0;
   const isLast = index === filteredImages.length - 1;
+  const dataUrl = current.image?.image.dataUrl;
 
   return (
     <Box sx={{
@@ -193,10 +112,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
       height: { xs: 'auto', md: '100%' },
     }}>
 
-      {/* ── Karttaviewer — fullscreen hoidetaan itse ── */}
+      {/* ── Vasen: NDVI-kuvaviewer (img + swipe) ── */}
       <Paper
         sx={{
-          // Fullscreen: fixed koko ruutu, zIndex modaalin tasolla
           ...(isFullscreen ? {
             position: 'fixed',
             inset: 0,
@@ -204,9 +122,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             borderRadius: 0,
           } : {
             flex: { md: '1 1 65%' },
-            // Eksplisiittinen korkeus mobiilissa jotta Leaflet saa oikean koon
-            // heti mount-vaiheessa eikä saa height:0
-            height: { xs: 480, md: '100%' },
+            height: { xs: 'auto', md: '100%' },
             minHeight: { md: 0 },
           }),
           display: 'flex',
@@ -246,31 +162,58 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             sx={{ ml: 'auto' }}
             aria-label={isFullscreen ? 'Sulje koko ruutu' : 'Avaa koko ruutu'}
           >
-            {isFullscreen
-              ? <CloseFullscreenIcon fontSize="small" />
-              : <OpenInFullIcon fontSize="small" />}
+            {isFullscreen ? <CloseFullscreenIcon fontSize="small" /> : <OpenInFullIcon fontSize="small" />}
           </IconButton>
         </Box>
 
-        {/* Leaflet-kartta */}
+        {/* Kuva-alue — swipe toimii koska ei Leaflet-karttaa tässä */}
         <Box
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           sx={{
-            flex: 1, minHeight: 0, position: 'relative',
-            '& .leaflet-container': { height: '100%', width: '100%', background: '#1a1a2e' },
+            flex: 1,
+            position: 'relative',
+            bgcolor: 'background.paper',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            minHeight: { xs: 300, md: 0 },
+            userSelect: 'none',
           }}
         >
-          <Box ref={mapContainerRef} sx={{ height: '100%', width: '100%' }} />
+          {!imgLoaded && (
+            <Skeleton
+              variant="rectangular"
+              sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            />
+          )}
+          {dataUrl && (
+            <Box
+              component="img"
+              src={dataUrl}
+              alt={`NDVI ${fmt(imageDate)}`}
+              onLoad={() => setImgLoaded(true)}
+              sx={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                opacity: imgLoaded ? 1 : 0,
+                transition: 'opacity 0.3s',
+                pointerEvents: 'none',
+                filter: 'blur(1px)',
+              }}
+            />
+          )}
           <Chip
             label={fmt(imageDate)}
             size="small"
             sx={{
-              position: 'absolute', bottom: 32, left: '50%',
+              position: 'absolute', bottom: 12, left: '50%',
               transform: 'translateX(-50%)',
               bgcolor: 'rgba(0,0,0,0.65)', color: '#fff',
               fontWeight: 600, backdropFilter: 'blur(4px)',
-              pointerEvents: 'none', zIndex: 1000,
+              pointerEvents: 'none',
             }}
           />
         </Box>
@@ -340,13 +283,17 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
         )}
       </Paper>
 
-      {/* ── Oikea: NdviViewPanel — piilotetaan fullscreenissä ── */}
+      {/* ── Oikea: NdviViewPanel tabeineen ──
+          height: eksplisiittisesti sekä xs että md jotta flex-lapset
+          (OnMapTab, LocationTab) saavat height:'100%' oikein mobiilissa.
+          Ilman xs-korkeutta Leaflet-tabit saavat height:0. */}
       {!isFullscreen && (
         <Box sx={{
           flex: { md: '0 0 35%' },
-          minHeight: { xs: 420, md: 0 },
-          height: { md: '100%' },
-          display: 'flex', flexDirection: 'column',
+          height: { xs: 500, md: '100%' },
+          minHeight: { md: 0 },
+          display: 'flex',
+          flexDirection: 'column',
         }}>
           <NdviViewPanel
             fieldId={fieldId}
