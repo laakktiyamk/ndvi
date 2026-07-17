@@ -396,7 +396,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           icon={<MapIcon fontSize="small" color="primary" />}
           expanded={expanded === 'onmap'}
           onChange={handleAccordion}
-          contentHeight={340}
+          contentHeight={580}
         >
           <OnMapTab
             entry={current}
@@ -413,7 +413,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           icon={<LocationOnIcon fontSize="small" color="primary" />}
           expanded={expanded === 'location'}
           onChange={handleAccordion}
-          contentHeight={340}
+          contentHeight={580}
         >
           {geometry
             ? <LocationTab geometry={geometry} fieldName={fieldName} />
