@@ -44,6 +44,7 @@ export interface INdviResult {
 }
 
 // ─── Weather ─────────────────────────────────────────
+/*
 export interface IWeather {
   _id: string;
   sentinelid: string;
@@ -57,7 +58,7 @@ export interface IWeather {
   shortwave_radiation_sum: number | null;
   et0_fao_evapotranspiration: number | null;
   createdAt: string;
-}
+}*/
 
 // ─── Dates (per-päivä stats + sentinelid) ────────────
 export interface DateEntry {

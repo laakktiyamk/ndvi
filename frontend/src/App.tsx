@@ -49,7 +49,7 @@ export default function App() {
       <ThemeProvider theme={theme}>
         {/* CssBaseline asettaa body-taustan teeman mukaan */}
         <CssBaseline />
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />

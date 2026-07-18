@@ -45,10 +45,10 @@ export default function LoginPage() {
       <Paper sx={{ p: 4, width: '100%', maxWidth: 400 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
           <GrassIcon color="primary" sx={{ fontSize: 32 }} />
-          <Typography variant="h5" fontWeight={700}>NDVI Monitor</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>NDVI Monitor</Typography>
         </Box>
 
-        <Typography variant="h6" mb={3}>Kirjaudu sisään</Typography>
+        <Typography variant="h6" sx={{ mb: 3 }}>Kirjaudu sisään</Typography>
 
         <Box component="form" onSubmit={handleSubmit}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -57,9 +57,7 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-              autoFocus
+              required fullWidth autoFocus
               autoComplete="email"
             />
             <TextField
@@ -67,13 +65,10 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
+              required fullWidth
               autoComplete="current-password"
             />
-
             {error && <Alert severity="error">{error}</Alert>}
-
             <Button
               type="submit"
               variant="contained"
@@ -88,11 +83,9 @@ export default function LoginPage() {
 
         <Divider sx={{ my: 3 }} />
 
-        <Typography variant="body2" textAlign="center">
+        <Typography variant="body2" sx={{ textAlign: 'center' }}>
           Ei tiliä?{' '}
-          <Link component={RouterLink} to="/register">
-            Rekisteröidy
-          </Link>
+          <Link component={RouterLink} to="/register">Rekisteröidy</Link>
         </Typography>
       </Paper>
     </Box>

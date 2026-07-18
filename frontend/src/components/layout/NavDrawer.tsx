@@ -1,20 +1,21 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer, List, ListItem, ListItemButton,
-  ListItemIcon, ListItemText, Toolbar, Divider, Typography, Box,
+  ListItemIcon, ListItemText, Toolbar, Divider, Typography, Box, Tooltip,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import GrassIcon from '@mui/icons-material/Grass';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import MapIcon from '@mui/icons-material/Map';
+import { useAppStore } from '../../store/appStore';
 
 const NAV_ITEMS = [
-  { label: 'Dashboard',    path: '/',          icon: <DashboardIcon /> },
-  { label: 'Lohkot',       path: '/fields',    icon: <GrassIcon />     },
-  { label: 'GeoJSON-haku', path: '/geojson',   icon: <MapIcon />       },
-  { label: 'Sää',          path: '/weather',   icon: <WbSunnyIcon />   },
-  { label: 'Analyysi',     path: '/analysis',  icon: <BarChartIcon />  },
+  { label: 'Dashboard',    path: '/',          icon: <DashboardIcon />, requiresField: false },
+  { label: 'Lohkot',       path: '/fields',    icon: <GrassIcon />,     requiresField: false },
+  { label: 'GeoJSON-haku', path: '/geojson',   icon: <MapIcon />,       requiresField: false },
+  { label: 'Sää',          path: '/weather',   icon: <WbSunnyIcon />,   requiresField: true  },
+  { label: 'Analyysi',     path: '/analysis',  icon: <BarChartIcon />,  requiresField: true  },
 ];
 
 interface NavDrawerProps {
@@ -29,8 +30,11 @@ interface NavDrawerProps {
 export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpen = true, onNavClose }: NavDrawerProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { selectedFieldId } = useAppStore();
+  const hasField = Boolean(selectedFieldId);
 
-  const handleClick = (path: string) => {
+  const handleClick = (path: string, disabled: boolean) => {
+    if (disabled) return;
     navigate(path);
     if (isMobile) onClose();
     else onNavClose?.();
@@ -41,11 +45,13 @@ export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpe
       <Toolbar />
       <Divider />
       <List sx={{ flexGrow: 1 }}>
-        {NAV_ITEMS.map(({ label, path, icon }) => (
-          <ListItem key={path} disablePadding>
+        {NAV_ITEMS.map(({ label, path, icon, requiresField }) => {
+          const disabled = requiresField && !hasField;
+          const button = (
             <ListItemButton
               selected={location.pathname === path}
-              onClick={() => handleClick(path)}
+              onClick={() => handleClick(path, disabled)}
+              disabled={disabled}
               sx={{
                 mx: 1, mb: 0.5,
                 borderRadius: 1,
@@ -60,8 +66,18 @@ export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpe
               <ListItemIcon sx={{ minWidth: 40 }}>{icon}</ListItemIcon>
               <ListItemText primary={label} />
             </ListItemButton>
-          </ListItem>
-        ))}
+          );
+
+          return (
+            <ListItem key={path} disablePadding>
+              {disabled ? (
+                <Tooltip title="Valitse ensin lohko" placement="right" arrow>
+                  <span style={{ width: '100%' }}>{button}</span>
+                </Tooltip>
+              ) : button}
+            </ListItem>
+          );
+        })}
       </List>
       <Divider />
       <Box sx={{ p: 2 }}>
@@ -70,45 +86,30 @@ export default function NavDrawer({ open, onClose, isMobile, drawerWidth, navOpe
     </Box>
   );
 
-  // Mobiili: temporary drawer (liu'uttaa sivulta, sulkeutuu taustaa klikkaamalla)
   if (isMobile) {
     return (
-      <Drawer
-        variant="temporary"
-        open={open}
-        onClose={onClose}
+      <Drawer variant="temporary" open={open} onClose={onClose}
         ModalProps={{ keepMounted: true }}
-        sx={{ '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' } }}
-      >
+        sx={{ '& .MuiDrawer-paper': { width: drawerWidth, boxSizing: 'border-box' } }}>
         {drawerContent}
       </Drawer>
     );
   }
 
-  // Desktop: permanent drawer joka liukuu CSS transform -animaatiolla.
-  // Aiempi Collapse + permanent -yhdistelmä aiheutti layout-ongelmia
-  // (z-index, DOM:iin jäävä drawer kun leveys = 0). Nyt Drawer pysyy
-  // DOM:issa ja Paper siirtyy translateX:llä ruudun ulkopuolelle.
-  // AppLayout laskee effectiveLeft tämän mukaan (navOpen ? DRAWER_WIDTH : 0).
   return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: navOpen ? drawerWidth : 0,
-        flexShrink: 0,
-        transition: 'width 0.2s ease',
-        // overflow:hidden estää drawerin sisällön näkymisen siirron aikana
-        overflow: 'hidden',
-        '& .MuiDrawer-paper': {
-          width: drawerWidth,
-          boxSizing: 'border-box',
-          transform: navOpen ? 'translateX(0)' : `translateX(-${drawerWidth}px)`,
-          transition: 'transform 0.2s ease',
-          // Varmistaa ettei drawer näy AppBarin päällä animoinnin aikana
-          visibility: navOpen ? 'visible' : 'hidden',
-        },
-      }}
-    >
+    <Drawer variant="permanent" sx={{
+      width: navOpen ? drawerWidth : 0,
+      flexShrink: 0,
+      transition: 'width 0.2s ease',
+      overflow: 'hidden',
+      '& .MuiDrawer-paper': {
+        width: drawerWidth,
+        boxSizing: 'border-box',
+        transform: navOpen ? 'translateX(0)' : `translateX(-${drawerWidth}px)`,
+        transition: 'transform 0.2s ease',
+        visibility: navOpen ? 'visible' : 'hidden',
+      },
+    }}>
       {drawerContent}
     </Drawer>
   );
