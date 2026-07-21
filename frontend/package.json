@@ -21,9 +21,11 @@
     "axios": "^1.7.2",
     "date-fns": "^4.4.0",
     "dayjs": "^1.11.21",
+    "i18next": "^26.3.6",
     "leaflet": "^1.9.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-i18next": "^17.0.10",
     "react-router-dom": "^6.23.1",
     "recharts": "^3.9.2",
     "zustand": "^4.5.2"
