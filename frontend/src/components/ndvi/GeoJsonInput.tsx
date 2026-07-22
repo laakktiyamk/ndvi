@@ -1,14 +1,12 @@
 import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Box, TextField, Button, Alert, Typography,
   CircularProgress, Collapse,
 } from '@mui/material';
-
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import { hint } from "@mapbox/geojsonhint";
-
 import rewind from "@turf/rewind";
-
 
 function fixGeoJSON(text: string): string {
   text = text.replace(/(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
@@ -18,31 +16,25 @@ function fixGeoJSON(text: string): string {
 
 async function validateGeoJSON(geojson: object): Promise<{ valid: boolean; errors: string[] }> {
   try {
-    // Korjataan kiertosuunta ennen validointia, ettei hint valita turhaan
     const fixed = rewind(geojson as any, { mutate: false });
-
     const errors = hint(fixed);
-
-    console.log("GeoJSON validation result:", { valid: errors.length === 0, errors });
-    console.log("GeoJSON after rewind:", fixed);
-
     return {
       valid: errors.length === 0,
-      errors: errors.map((e: { message: string }) => e.message)
+      errors: errors.map((e: { message: string }) => e.message),
     };
   } catch (err) {
     return {
       valid: false,
-      errors: ["Virheellinen syöte: " + (err instanceof Error ? err.message : String(err))],
+      errors: ["Invalid input: " + (err instanceof Error ? err.message : String(err))],
     };
   }
 }
 
 interface Props {
-  initialValue?: string;                      // store → säilyy routejen välillä
-  onInputChange?: (text: string) => void;     // kirjoittaessa → storeen
-  onValid: (geojson: object | null) => void;  // validi GeoJSON → storeen
-  onSubmit: (geojson: object) => void;        // nappia klikattu
+  initialValue?: string;
+  onInputChange?: (text: string) => void;
+  onValid: (geojson: object | null) => void;
+  onSubmit: (geojson: object) => void;
   loading?: boolean;
 }
 
@@ -53,6 +45,7 @@ export default function GeoJsonInput({
   onSubmit,
   loading = false,
 }: Props) {
+  const { t } = useTranslation();
   const [input, setInput] = useState(initialValue);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [geojsonErrors, setGeojsonErrors] = useState<string[]>([]);
@@ -62,7 +55,7 @@ export default function GeoJsonInput({
   const handleChange = useCallback(async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const raw = e.target.value;
     setInput(raw);
-    onInputChange?.(raw);      // tallenna storeen
+    onInputChange?.(raw);
     setValidGeoJson(null);
     onValid(null);
 
@@ -77,7 +70,7 @@ export default function GeoJsonInput({
     try {
       parsed = JSON.parse(fixed);
     } catch (err: unknown) {
-      setJsonError('Virheellinen JSON: ' + (err instanceof Error ? err.message : String(err)));
+      setJsonError('Invalid JSON: ' + (err instanceof Error ? err.message : String(err)));
       setGeojsonErrors([]);
       return;
     }
@@ -90,7 +83,7 @@ export default function GeoJsonInput({
 
     if (result.valid) {
       setValidGeoJson(parsed);
-      onValid(parsed);          // tallenna storeen
+      onValid(parsed);
     }
   }, [onInputChange, onValid]);
 
@@ -99,7 +92,7 @@ export default function GeoJsonInput({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
       <Typography variant="body2" color="text.secondary">
-        Liitä GeoJSON tai koordinaattiobjekti tähän
+        {t('geoJsonInputLabel')}
       </Typography>
 
       <TextField
@@ -108,7 +101,7 @@ export default function GeoJsonInput({
         fullWidth
         value={input}
         onChange={handleChange}
-        placeholder='Esimerkki: {"type":"Polygon","coordinates":[[[22.39,61.96],...]]}'
+        placeholder={t('geoJsonPlaceholder')}
         error={!!jsonError || geojsonErrors.length > 0}
         slotProps={{
           input: {
@@ -124,7 +117,7 @@ export default function GeoJsonInput({
       <Collapse in={validating}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <CircularProgress size={16} />
-          <Typography variant="caption" color="text.secondary">Validoidaan...</Typography>
+          <Typography variant="caption" color="text.secondary">{t('validating')}</Typography>
         </Box>
       </Collapse>
 
@@ -134,11 +127,8 @@ export default function GeoJsonInput({
 
       <Collapse in={geojsonErrors.length > 0}>
         <Alert severity="warning" sx={{ py: 0.5 }}>
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 600 }}
-          >
-            GeoJSON-ongelmat:
+          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+            {t('geoJsonIssues')}
           </Typography>
           <ul style={{ margin: '4px 0 0', paddingLeft: 16 }}>
             {geojsonErrors.map((err, i) => (
@@ -150,7 +140,7 @@ export default function GeoJsonInput({
 
       <Collapse in={isValid}>
         <Alert severity="success" icon={<CheckCircleOutlinedIcon fontSize="small" />} sx={{ py: 0.5 }}>
-          Validi GeoJSON
+          {t('validGeoJson')}
         </Alert>
       </Collapse>
 
@@ -161,7 +151,7 @@ export default function GeoJsonInput({
         startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
         fullWidth
       >
-        {loading ? 'Haetaan...' : 'Hae NDVI-kuvat'}
+        {loading ? t('fetchingImages') : t('fetchNdviImages')}
       </Button>
     </Box>
   );

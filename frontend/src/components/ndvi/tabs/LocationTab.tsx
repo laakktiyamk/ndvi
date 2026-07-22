@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Typography, Alert } from '@mui/material';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -27,13 +28,13 @@ function getCentroid(geometry: { type: string; coordinates: unknown[] }): [numbe
 }
 
 export default function LocationTab({ geometry, fieldName }: Props) {
+  const { t } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);
   const mapInitialized = useRef(false);
 
   const centroid = useMemo(() => getCentroid(geometry), [geometry]);
 
-  // rAF varmistaa että flex-kontainerilla on oikea koko ennen Leaflet-initia
   useEffect(() => {
     if (!centroid || mapInitialized.current) return;
 
@@ -53,7 +54,8 @@ export default function LocationTab({ geometry, fieldName }: Props) {
       }).addTo(map);
 
       const marker = L.marker(centroid);
-      if (fieldName) marker.bindPopup(`<b>${fieldName}</b>`).openPopup();
+      const popupName = fieldName ?? t('unnamedArea');
+      if (fieldName) marker.bindPopup(`<b>${popupName}</b>`).openPopup();
       marker.addTo(map);
 
       leafletRef.current = map;
@@ -65,17 +67,17 @@ export default function LocationTab({ geometry, fieldName }: Props) {
       leafletRef.current = null;
       mapInitialized.current = false;
     };
-  }, [centroid, fieldName]);
+  }, [centroid, fieldName, t]);
 
   if (!centroid) {
-    return <Alert severity="warning" sx={{ m: 2 }}>Sijaintia ei voitu laskea geometriasta.</Alert>;
+    return <Alert severity="warning" sx={{ m: 2 }}>{t('noLocationGeometry')}</Alert>;
   }
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
         <Typography variant="caption" color="text.secondary">
-          AOI:n sijainti — {fieldName ?? 'Nimetön alue'}
+          {t('aoiLocation')} — {fieldName ?? t('unnamedArea')}
         </Typography>
       </Box>
       <Box

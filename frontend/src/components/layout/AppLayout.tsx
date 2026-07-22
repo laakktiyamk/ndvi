@@ -1,5 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../../store/appStore';
 import {
   AppBar, Box, IconButton, Toolbar,
@@ -11,7 +12,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import NavDrawer from './NavDrawer';
-import SettingsMenu, { type Lang } from './SettingsMenu';
+import SettingsMenu from './SettingsMenu';
 import { useAuthStore } from '../../store/authStore';
 
 const DRAWER_WIDTH = 240;
@@ -20,11 +21,10 @@ const APPBAR_HEIGHT = 64;
 interface Props {
   themeMode: 'light' | 'dark';
   onToggleTheme: () => void;
-  lang: Lang;
-  onToggleLang: () => void;
 }
 
-export default function AppLayout({ themeMode, onToggleTheme, lang, onToggleLang }: Props) {
+export default function AppLayout({ themeMode, onToggleTheme }: Props) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -46,7 +46,7 @@ export default function AppLayout({ themeMode, onToggleTheme, lang, onToggleLang
               <MenuIcon />
             </IconButton>
           ) : (
-            <Tooltip title={navOpen ? 'Piilota valikko' : 'Näytä valikko'}>
+            <Tooltip title={navOpen ? t('hideMenu') : t('showMenu')}>
               <IconButton color="inherit" edge="start" onClick={() => setNavOpen(v => !v)} sx={{ mr: 1 }}>
                 {navOpen ? <ChevronLeftIcon /> : <ChevronRightIcon />}
               </IconButton>
@@ -82,11 +82,9 @@ export default function AppLayout({ themeMode, onToggleTheme, lang, onToggleLang
               <SettingsMenu
                 themeMode={themeMode}
                 onToggleTheme={onToggleTheme}
-                lang={lang}
-                onToggleLang={onToggleLang}
               />
-              <Tooltip title={lang === 'fi' ? 'Kirjaudu ulos' : 'Logout'}>
-                <IconButton color="inherit" onClick={logout} aria-label="Kirjaudu ulos" size="small">
+              <Tooltip title={t('logout')}>
+                <IconButton color="inherit" onClick={logout} aria-label={t('logout')} size="small">
                   <LogoutIcon fontSize="small" />
                 </IconButton>
               </Tooltip>

@@ -1,5 +1,5 @@
-// components/ndvi/NdviTimelineChart.tsx
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, BarChart, Bar,
   XAxis, YAxis, CartesianGrid,
@@ -14,7 +14,6 @@ interface Props {
   entries: MergedNdviEntry[];
   selectedIndex: number;
   onSelect: (index: number) => void;
-  /** Oletuskorkeus kaavioalueelle pikseleinä. Oletusarvo 160. */
   chartHeight?: number;
 }
 
@@ -33,6 +32,7 @@ const fmtDate = (iso: string) => {
 type ChartType = 'line' | 'bar';
 
 export default function NdviTimelineChart({ entries, selectedIndex, onSelect, chartHeight = 160 }: Props) {
+  const { t } = useTranslation();
   const [chartType, setChartType] = useState<ChartType>('line');
 
   if (!entries.length) return null;
@@ -88,7 +88,7 @@ export default function NdviTimelineChart({ entries, selectedIndex, onSelect, ch
     <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="caption" color="text.secondary">
-          NDVI-keskiarvo — aikasarja
+          NDVI avg — {t('chart')}
         </Typography>
         <ToggleButtonGroup
           value={chartType}
@@ -97,10 +97,10 @@ export default function NdviTimelineChart({ entries, selectedIndex, onSelect, ch
           size="small"
           sx={{ '& .MuiToggleButton-root': { py: 0.25, px: 0.75 } }}
         >
-          <ToggleButton value="line" aria-label="Viivakuvaaja">
+          <ToggleButton value="line" aria-label={t('lineChart')}>
             <ShowChartIcon fontSize="small" />
           </ToggleButton>
-          <ToggleButton value="bar" aria-label="Pylväskuvaaja">
+          <ToggleButton value="bar" aria-label={t('barChart')}>
             <BarChartIcon fontSize="small" />
           </ToggleButton>
         </ToggleButtonGroup>

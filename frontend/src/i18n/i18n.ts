@@ -8,7 +8,10 @@ const savedLang = (localStorage.getItem('ndvi-lang') as 'en' | 'fi') ?? 'en';
 i18n
   .use(initReactI18next)
   .init({
-    resources: { en: { translation: en }, fi: { translation: fi } },
+    resources: {
+      en: { translation: en },
+      fi: { translation: fi },
+    },
     lng: savedLang,
     fallbackLng: 'en',
     interpolation: { escapeValue: false },

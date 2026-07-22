@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Grid, Button,
-  Chip, Divider, Alert, CircularProgress, Card, CardContent, CardActionArea,
+  Chip, Divider, Alert, CircularProgress, Card, CardActionArea,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import GrassIcon from '@mui/icons-material/Grass';
@@ -20,13 +21,7 @@ import {
   Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { useAppStore } from '../store/appStore';
-
-const NDVI_STATUS = (v: number) => {
-  if (v >= 0.6) return { label: 'Erinomainen', color: '#2E7D32' };
-  if (v >= 0.4) return { label: 'Hyvä', color: '#689F38' };
-  if (v >= 0.2) return { label: 'Kohtalainen', color: '#F9A825' };
-  return { label: 'Heikko', color: '#C62828' };
-};
+import { getNdviStatus } from '../utils/ndviStatus';
 
 const fmt = (iso: string) =>
   new Date(iso).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
@@ -43,15 +38,15 @@ const calcGDD = (tMax: number | null, tMin: number | null): number => {
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-// ── Navigointikortit ─────────────────────────────────────────────────────────
 const NAV_CARDS = [
-  { label: 'Lohkot',       desc: 'Hallitse ja tarkastele peltolohkoja', path: '/fields',   icon: <GrassIcon sx={{ fontSize: 36 }} color="primary" />,    requiresField: false },
-  { label: 'Sää',          desc: 'Säädata ja kasvukauden tilastot',      path: '/weather',  icon: <WbSunnyIcon sx={{ fontSize: 36 }} color="primary" />,  requiresField: true  },
-  { label: 'Analyysi',     desc: 'NDVI-trendit ja ennusteet',            path: '/analysis', icon: <BarChartIcon sx={{ fontSize: 36 }} color="primary" />, requiresField: true  },
-  { label: 'GeoJSON-haku', desc: 'Lisää uusi lohko koordinaateilla',    path: '/geojson',  icon: <MapIcon sx={{ fontSize: 36 }} color="primary" />,      requiresField: false },
+  { labelKey: 'fields',   descKey: 'navFieldsDesc',   path: '/fields',   icon: <GrassIcon sx={{ fontSize: 36 }} color="primary" />,    requiresField: false },
+  { labelKey: 'weather',  descKey: 'navWeatherDesc',  path: '/weather',  icon: <WbSunnyIcon sx={{ fontSize: 36 }} color="primary" />,  requiresField: true  },
+  { labelKey: 'analysis', descKey: 'navAnalysisDesc', path: '/analysis', icon: <BarChartIcon sx={{ fontSize: 36 }} color="primary" />, requiresField: true  },
+  { labelKey: 'geojson',  descKey: 'navGeojsonDesc',  path: '/geojson',  icon: <MapIcon sx={{ fontSize: 36 }} color="primary" />,      requiresField: false },
 ];
 
 export default function DashboardPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const {
     fields, fieldsFetched, fieldsLoading,
@@ -72,7 +67,7 @@ export default function DashboardPage() {
   const latestEntry = sorted[0] ?? null;
   const prevEntry = sorted[1] ?? null;
   const trend = latestEntry && prevEntry ? latestEntry.stats.average - prevEntry.stats.average : null;
-  const status = latestEntry ? NDVI_STATUS(latestEntry.stats.average) : null;
+  const status = latestEntry ? getNdviStatus(latestEntry.stats.average, t) : null;
 
   const totalArea = fields.reduce((s, f) => s + (f.area ?? 0), 0);
 
@@ -94,12 +89,12 @@ export default function DashboardPage() {
         <PageHeader />
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <GrassIcon sx={{ fontSize: 56, color: 'action.disabled', mb: 2 }} />
-          <Typography variant="h6" sx={{ mb: 1 }}>Ei lohkoja vielä</Typography>
+          <Typography variant="h6" sx={{ mb: 1 }}>{t('noFields')}</Typography>
           <Typography color="text.secondary" sx={{ mb: 3 }}>
-            Lisää ensimmäinen lohko GeoJSON-haulla aloittaaksesi seurannan.
+            {t('addFieldPrompt')}
           </Typography>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/geojson')}>
-            Lisää lohko
+            {t('addField')}
           </Button>
         </Paper>
       </Box>
@@ -110,28 +105,23 @@ export default function DashboardPage() {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <PageHeader />
 
-      {/* ── Navigointikortit ── */}
       <Grid container spacing={2}>
-        {NAV_CARDS.map(({ label, desc, path, icon, requiresField }) => {
+        {NAV_CARDS.map(({ labelKey, descKey, path, icon, requiresField }) => {
           const disabled = requiresField && !hasField;
           return (
             <Grid size={{ xs: 6, sm: 3 }} key={path}>
-              <Card
-                elevation={0}
-                variant="outlined"
-                sx={{ height: '100%', opacity: disabled ? 0.45 : 1 }}
-              >
+              <Card elevation={0} variant="outlined" sx={{ height: '100%', opacity: disabled ? 0.45 : 1 }}>
                 <CardActionArea
                   disabled={disabled}
                   onClick={() => navigate(path)}
                   sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
                 >
                   {icon}
-                  <Typography sx={{ fontWeight: 600, mt: 1 }}>{label}</Typography>
-                  <Typography variant="caption" color="text.secondary">{desc}</Typography>
+                  <Typography sx={{ fontWeight: 600, mt: 1 }}>{t(labelKey)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{t(descKey)}</Typography>
                   {disabled && (
                     <Typography variant="caption" color="warning.main" sx={{ mt: 0.5 }}>
-                      Valitse ensin lohko
+                      {t('selectFieldFirst')}
                     </Typography>
                   )}
                 </CardActionArea>
@@ -141,19 +131,18 @@ export default function DashboardPage() {
         })}
       </Grid>
 
-      {/* ── Lohkojen yhteenveto ── */}
       {fieldsLoading ? <CircularProgress size={20} /> : (
         <Grid container spacing={2}>
           <Grid size={{ xs: 6, sm: 3 }}>
             <Paper sx={{ p: 2 }}>
-              <Typography variant="caption" color="text.secondary">Lohkoja</Typography>
+              <Typography variant="caption" color="text.secondary">{t('fieldCount')}</Typography>
               <Typography sx={{ fontWeight: 700, fontSize: '1.75rem' }}>{fields.length}</Typography>
               <Typography variant="caption" color="text.secondary">kpl</Typography>
             </Paper>
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <Paper sx={{ p: 2 }}>
-              <Typography variant="caption" color="text.secondary">Yhteispinta-ala</Typography>
+              <Typography variant="caption" color="text.secondary">{t('totalArea')}</Typography>
               <Typography sx={{ fontWeight: 700, fontSize: '1.75rem' }}>
                 {(totalArea / 10000).toFixed(1)}
               </Typography>
@@ -163,15 +152,14 @@ export default function DashboardPage() {
         </Grid>
       )}
 
-      {/* ── Valittu lohko ── */}
       {!selectedField ? (
         <Paper sx={{ p: 3, textAlign: 'center' }}>
           <GrassIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
-          <Typography variant="body1" sx={{ mb: 1 }}>Ei lohkoa valittuna</Typography>
+          <Typography variant="body1" sx={{ mb: 1 }}>{t('noFieldSelected')}</Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Valitse lohko nähdäksesi NDVI-tiedot ja kasvukauden tilastot.
+            {t('selectFieldPrompt')}
           </Typography>
-          <Button variant="outlined" onClick={() => navigate('/fields')}>Avaa lohkot</Button>
+          <Button variant="outlined" onClick={() => navigate('/fields')}>{t('openFields')}</Button>
         </Paper>
       ) : (
         <Paper sx={{ p: 2.5 }}>
@@ -185,19 +173,17 @@ export default function DashboardPage() {
                 </Typography>
               )}
             </Box>
-            <Button size="small" onClick={() => navigate('/fields')}>Avaa →</Button>
+            <Button size="small" onClick={() => navigate('/fields')}>{t('open')}</Button>
           </Box>
 
           {!hasData ? (
-            <Alert severity="info">
-              Avaa lohko Lohkot-sivulta ladataksesi NDVI-data.
-            </Alert>
+            <Alert severity="info">{t('openFieldFirst')}</Alert>
           ) : latestEntry && (
             <>
               <Divider sx={{ mb: 1.5 }} />
               <Grid container spacing={2}>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Typography variant="caption" color="text.secondary">Viimeisin NDVI</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('latestNdvi')}</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                     <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: status?.color }} />
                     <Typography sx={{ fontWeight: 700, fontSize: '1.5rem', color: status?.color }}>
@@ -210,7 +196,7 @@ export default function DashboardPage() {
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Typography variant="caption" color="text.secondary">Trendi</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('trend')}</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                     {trend === null ? <Typography color="text.secondary">—</Typography>
                       : trend > 0.02 ? <><TrendingUpIcon sx={{ color: '#2E7D32' }} /><Typography sx={{ color: '#2E7D32', fontWeight: 600 }}>+{trend.toFixed(3)}</Typography></>
@@ -222,9 +208,9 @@ export default function DashboardPage() {
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Typography variant="caption" color="text.secondary">Mittauksia</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('measurements')}</Typography>
                   <Typography sx={{ fontWeight: 700, fontSize: '1.5rem', mt: 0.5 }}>{ndviEntries.length}</Typography>
-                  <Typography variant="caption" color="text.secondary">satelliittikuvaa</Typography>
+                  <Typography variant="caption" color="text.secondary">{t('satelliteImages')}</Typography>
                 </Grid>
               </Grid>
             </>
@@ -232,21 +218,20 @@ export default function DashboardPage() {
         </Paper>
       )}
 
-      {/* ── Kasvukauden lämpösumma + sade ── */}
       {hasData && (
         <Paper sx={{ p: 2.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <ThermostatIcon color="primary" fontSize="small" />
             <Typography sx={{ fontWeight: 600 }}>
-              Kasvukausi {CURRENT_YEAR} — lämpösumma & sade
+              {t('growingSeason', { year: CURRENT_YEAR })}
             </Typography>
-            <Typography variant="caption" color="text.secondary">(1.5. alkaen, kynnys +5°C)</Typography>
+            <Typography variant="caption" color="text.secondary">{t('growingSeasonNote')}</Typography>
           </Box>
 
           {weatherLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress size={24} /></Box>
           ) : cumulativeData.length === 0 ? (
-            <Typography color="text.secondary" variant="body2">Säädataa ei saatavilla tälle kaudelle.</Typography>
+            <Typography color="text.secondary" variant="body2">{t('noWeatherData')}</Typography>
           ) : (
             <>
               <Grid container spacing={2} sx={{ mb: 2 }}>
@@ -254,7 +239,7 @@ export default function DashboardPage() {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                     <ThermostatIcon fontSize="small" sx={{ color: '#C62828' }} />
                     <Box>
-                      <Typography variant="caption" color="text.secondary">Lämpösumma</Typography>
+                      <Typography variant="caption" color="text.secondary">{t('heatSum')}</Typography>
                       <Typography sx={{ fontWeight: 700 }}>{cumulativeData[cumulativeData.length - 1]?.gdd ?? 0} °C·vrk</Typography>
                     </Box>
                   </Box>
@@ -263,7 +248,7 @@ export default function DashboardPage() {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                     <WaterDropIcon fontSize="small" sx={{ color: '#1565C0' }} />
                     <Box>
-                      <Typography variant="caption" color="text.secondary">Sade yhteensä</Typography>
+                      <Typography variant="caption" color="text.secondary">{t('totalRain')}</Typography>
                       <Typography sx={{ fontWeight: 700 }}>{cumulativeData[cumulativeData.length - 1]?.rain ?? 0} mm</Typography>
                     </Box>
                   </Box>
@@ -275,8 +260,8 @@ export default function DashboardPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                   <YAxis yAxisId="gdd" tick={{ fontSize: 10 }} width={40} tickFormatter={v => `${v}°`} />
                   <YAxis yAxisId="rain" orientation="right" tick={{ fontSize: 10 }} width={36} tickFormatter={v => `${v}mm`} />
-                  <Tooltip formatter={(v, name) => name === 'gdd' ? [`${v} °C·vrk`, 'Lämpösumma'] : [`${v} mm`, 'Sade']} />
-                  <Legend formatter={v => v === 'gdd' ? 'Lämpösumma' : 'Sade'} />
+                  <Tooltip formatter={(v, name) => name === 'gdd' ? [`${v} °C·vrk`, t('heatSum')] : [`${v} mm`, t('totalRain')]} />
+                  <Legend formatter={v => v === 'gdd' ? t('heatSum') : t('totalRain')} />
                   <Line yAxisId="gdd" type="monotone" dataKey="gdd" stroke="#C62828" strokeWidth={2} dot={false} isAnimationActive={false} />
                   <Line yAxisId="rain" type="monotone" dataKey="rain" stroke="#1565C0" strokeWidth={2} dot={false} isAnimationActive={false} />
                 </LineChart>
@@ -290,10 +275,11 @@ export default function DashboardPage() {
 }
 
 function PageHeader() {
+  const { t } = useTranslation();
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
       <DashboardIcon color="primary" />
-      <Typography variant="h5" sx={{ fontWeight: 700 }}>Dashboard</Typography>
+      <Typography variant="h5" sx={{ fontWeight: 700 }}>{t('dashboard')}</Typography>
     </Box>
   );
 }

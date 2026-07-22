@@ -49,7 +49,9 @@ export default function SettingsMenu({ themeMode, onToggleTheme }: Props) {
       >
         <MenuItem onClick={() => { onToggleTheme(); handleClose(); }}>
           <ListItemIcon>
-            {themeMode === 'dark' ? <Brightness7Icon fontSize="small" /> : <Brightness4Icon fontSize="small" />}
+            {themeMode === 'dark'
+              ? <Brightness7Icon fontSize="small" />
+              : <Brightness4Icon fontSize="small" />}
           </ListItemIcon>
           <ListItemText primary={themeMode === 'dark' ? t('lightMode') : t('darkMode')} />
         </MenuItem>

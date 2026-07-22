@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Tabs, Tab, Paper, Typography, CircularProgress, Alert } from '@mui/material';
 import { useAppStore } from '../../store/appStore';
 import type { MergedNdviEntry } from '../../types';
@@ -7,8 +8,6 @@ import NdviTimelineChart from './NdviTimelineChart';
 import StatisticsTab from './tabs/StatisticsTab';
 import OnMapTab from './tabs/OnMapTab';
 import LocationTab from './tabs/LocationTab';
-
-// ─── Tyypit ──────────────────────────────────────────────────────────────────
 
 interface Props {
   fieldId: string;
@@ -29,8 +28,6 @@ const fmt = (date: string) =>
     year: 'numeric',
   });
 
-// ─── Komponentti ─────────────────────────────────────────────────────────────
-
 export default function NdviViewPanel({
   fieldId,
   fieldName,
@@ -40,6 +37,7 @@ export default function NdviViewPanel({
   selectedIndex,
   onSelect,
 }: Props) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabKey>('chart');
   const { weatherData, imagesLoading, imagesError, activeGeometryHash } = useAppStore();
 
@@ -65,16 +63,11 @@ export default function NdviViewPanel({
       sx={{
         display: 'flex',
         flexDirection: 'column',
-        // height: '100%' toimii vain jos vanhemmalla on eksplisiittinen korkeus.
-        // NdviMapViewerissä oikean panelin wrapper tarvitsee:
-        //   display: 'flex', flexDirection: 'column'
-        // jotta tämä täyttää tilan oikein mobiilissakin (minHeight: 420).
         height: '100%',
         overflow: 'hidden',
         borderRadius: 2,
       }}
     >
-      {/* Tab-palkki — suomenkieliset labelit yhtenäistävät UI:n kielen */}
       <Tabs
         value={tab}
         onChange={(_, v: TabKey) => setTab(v)}
@@ -86,16 +79,12 @@ export default function NdviViewPanel({
           '& .MuiTab-root': { minHeight: 40, fontSize: '0.8rem', py: 0 },
         }}
       >
-        <Tab label="Kaavio"     value="chart"      />
-        <Tab label="Tilastot"   value="statistics" />
-        <Tab label="Kartalla"   value="onmap"      />
-        <Tab label="Sijainti"   value="location"   />
+        <Tab label={t('chart')}      value="chart"      />
+        <Tab label={t('statistics')} value="statistics" />
+        <Tab label={t('onMap')}      value="onmap"      />
+        <Tab label={t('location')}   value="location"   />
       </Tabs>
 
-      {/* Tab-sisältö
-          display:flex + flexDirection:column tarvitaan jotta Leaflet-pohjaiset
-          tabit (OnMapTab, LocationTab) saavat height:'100%' oikein.
-          Chart/Statistics scrollaavat overflow:auto:lla normaalisti. */}
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {tab === 'chart' && (
           <NdviTimelineChart
@@ -125,13 +114,10 @@ export default function NdviViewPanel({
         {tab === 'location' && (
           geometry
             ? <LocationTab geometry={geometry} fieldName={fieldName} />
-            : <Alert severity="info" sx={{ m: 2 }}>
-                Geometriatieto ei saatavilla — välitä <code>geometry</code>-prop komponentille.
-              </Alert>
+            : <Alert severity="info" sx={{ m: 2 }}>{t('noGeometry')}</Alert>
         )}
       </Box>
 
-      {/* Alapalkki */}
       <Box sx={{
         borderTop: 1,
         borderColor: 'divider',

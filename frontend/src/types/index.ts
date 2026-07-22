@@ -1,7 +1,7 @@
 // ─── Field ───────────────────────────────────────────
 export interface IField {
   _id: string;
-  id: string;                // geometrian hash — käytetään kuvien/dates-hakuun
+  id: string;
   name: string;
   area: number;
   geometry: {
@@ -29,7 +29,6 @@ export interface NdviImage {
   scale: { color: string; amount: number; from: number }[];
 }
 
-
 export interface INdviResult {
   _id: string;
   sentinelid: string;
@@ -42,23 +41,6 @@ export interface INdviResult {
   classPercentages: Record<string, number>;
   createdAt: string;
 }
-
-// ─── Weather ─────────────────────────────────────────
-/*
-export interface IWeather {
-  _id: string;
-  sentinelid: string;
-  date: string;
-  geometryHash?: string;
-  temperature_2m_mean: number | null;
-  temperature_2m_max: number | null;
-  temperature_2m_min: number | null;
-  relative_humidity_2m_mean: number | null;
-  precipitation_sum: number | null;
-  shortwave_radiation_sum: number | null;
-  et0_fao_evapotranspiration: number | null;
-  createdAt: string;
-}*/
 
 // ─── Dates (per-päivä stats + sentinelid) ────────────
 export interface DateEntry {
@@ -78,6 +60,7 @@ export interface MergedNdviEntry {
   generationtime: string;
   stats: { average: number; max: number; min: number; std: number };
   image: NdviImage | undefined;
+  name?: string;
 }
 
 export interface IWeather {
@@ -85,12 +68,14 @@ export interface IWeather {
   sentinelid: string;
   fieldId: string;
   date: string;
+  temperature_2m_mean: number | null;
   temperature_2m_max: number | null;
   temperature_2m_min: number | null;
+  relative_humidity_2m_mean: number | null;
   precipitation_sum: number | null;
-  windspeed_10m_max: number;
+  wind_speed_10m_mean: number | null;
+  windspeed_10m_max: number | null;
   shortwave_radiation_sum: number | null;
   et0_fao_evapotranspiration: number | null;
   createdAt: string;
-  wind_speed_10m_mean: number | null;
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField,
@@ -8,14 +9,14 @@ import GrassIcon from '@mui/icons-material/Grass';
 import { register } from '../services/authService';
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
-
-  const [username, setUsername] = useState('');
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername]   = useState('');
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
   const [password2, setPassword2] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +28,7 @@ export default function RegisterPage() {
       navigate('/login', { state: { registered: true } });
     } catch (err: unknown) {
       if (err instanceof Error) setError(err.message);
-      else setError('Rekisteröinti epäonnistui');
+      else setError(t('fetchFailed'));
     } finally {
       setLoading(false);
     }
@@ -47,20 +48,18 @@ export default function RegisterPage() {
           <GrassIcon color="primary" sx={{ fontSize: 32 }} />
           <Typography variant="h5" sx={{ fontWeight: 700 }}>NDVI Monitor</Typography>
         </Box>
-
-        <Typography variant="h6" sx={{ mb: 3 }}>Luo tili</Typography>
-
+        <Typography variant="h6" sx={{ mb: 3 }}>{t('register')}</Typography>
         <Box component="form" onSubmit={handleSubmit}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
-              label="Käyttäjänimi"
+              label={t('username')}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required fullWidth autoFocus
               autoComplete="username"
             />
             <TextField
-              label="Sähköposti"
+              label={t('email')}
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -68,7 +67,7 @@ export default function RegisterPage() {
               autoComplete="email"
             />
             <TextField
-              label="Salasana"
+              label={t('password')}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -76,7 +75,7 @@ export default function RegisterPage() {
               autoComplete="new-password"
             />
             <TextField
-              label="Salasana uudelleen"
+              label={t('passwordAgain')}
               type="password"
               value={password2}
               onChange={(e) => setPassword2(e.target.value)}
@@ -91,16 +90,13 @@ export default function RegisterPage() {
               disabled={loading}
               startIcon={loading ? <CircularProgress size={16} color="inherit" /> : undefined}
             >
-              {loading ? 'Rekisteröidään...' : 'Rekisteröidy'}
+              {loading ? '...' : t('register')}
             </Button>
           </Box>
         </Box>
-
         <Divider sx={{ my: 3 }} />
-
         <Typography variant="body2" sx={{ textAlign: 'center' }}>
-          Onko jo tili?{' '}
-          <Link component={RouterLink} to="/login">Kirjaudu</Link>
+          <Link component={RouterLink} to="/login">{t('login')}</Link>
         </Typography>
       </Paper>
     </Box>

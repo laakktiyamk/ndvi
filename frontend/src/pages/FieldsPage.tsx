@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import {
   Box, Typography, Paper, List, ListItem,
@@ -10,15 +11,14 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useAppStore } from '../store/appStore';
 import NdviMapViewer from '../components/ndvi/NdviMapViewer';
-
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 import TextField from '@mui/material/TextField';
 
-
 const today = new Date().toISOString().split('T')[0];
 
 export default function FieldsPage() {
+  const { t } = useTranslation();
   const location = useLocation();
   const fromGeoJson = location.state?.fromGeoJson as boolean | undefined;
   const theme = useTheme();
@@ -60,15 +60,9 @@ export default function FieldsPage() {
 
   const selectedField = fields.find((f) => f.id === selectedFieldId);
 
-
   const filteredFields = fields.filter(f =>
     f.name.toLowerCase().includes(search.toLowerCase()));
 
-  // KORJAUS: Mobiilissa lista ja kartta eivät enää ole aina molemmat DOM:issa
-  // pystysuunnassa pinottuna (mikä pakotti käyttäjän scrollaamaan nähdäkseen
-  // kartan). Sen sijaan näytetään ehdollisesti vain toinen kerrallaan, ja se
-  // täyttää aina koko käytettävissä olevan korkeuden. Työpöydällä (md+)
-  // molemmat renderöidään aina rinnakkain kuten ennenkin.
   const showList = !isMobile || listOpen;
   const showMap = !isMobile || !listOpen;
 
@@ -81,16 +75,11 @@ export default function FieldsPage() {
           display: 'flex',
           flexDirection: 'row',
           flexShrink: 0,
-          // Mobiilissa lista on ainoa näkyvä elementti kun se on auki,
-          // joten se saa täyden korkeuden. Työpöydällä korkeus tulee
-          // sisällöstä/Paperista kuten ennen.
           height: { xs: '100%', md: 'auto' },
           minHeight: 0,
         }}>
           <Collapse in={listOpen} orientation="horizontal" timeout={200} sx={{ height: '100%' }}>
             <Paper sx={{
-              // Mobiilissa lista vie koko leveyden (ei kapeaa 240px-palkkia
-              // pienellä ruudulla), työpöydällä pysyy kiinteänä sivupalkkina.
               width: { xs: '100%', md: 240 },
               display: 'flex',
               flexDirection: 'column',
@@ -99,19 +88,18 @@ export default function FieldsPage() {
             }}>
               <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <GrassIcon color="primary" fontSize="small" />
-                <Typography sx={{ fontWeight: 700 }}>Lohkot</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{t('fields')}</Typography>
                 {fetched && (
                   <Chip label={fields.length} size="small" color="primary" variant="outlined" sx={{ ml: 'auto' }} />
                 )}
               </Box>
               <Divider />
 
-              {/* Search */}
               <Box sx={{ px: 1.5, py: 1 }}>
                 <TextField
                   size="small"
                   fullWidth
-                  placeholder="Hae lohkoa..."
+                  placeholder={t('searchField')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   slotProps={{
@@ -162,10 +150,6 @@ export default function FieldsPage() {
             </Paper>
           </Collapse>
 
-          {/* Toggle-nappi vain työpöydällä listan reunassa. Mobiilissa lista
-              voi olla kokonaan poissa DOM:ista kun se on kiinni, joten sen
-              avaaminen hoidetaan kartan puolen "Näytä lohkolista" -napista
-              (ks. alempana showMap-lohko). */}
           {!isMobile && (
             <Tooltip title={listOpen ? 'Piilota lista' : 'Näytä lista'} placement="right">
               <IconButton
@@ -199,19 +183,17 @@ export default function FieldsPage() {
           display: 'flex',
           flexDirection: 'column',
           gap: 1,
-          // Mobiilissa kartta on ainoa näkyvä elementti kun lista on kiinni,
-          // joten se saa täyden korkeuden.
           height: { xs: '100%', md: 'auto' },
         }}>
           {selectedField && !listOpen && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               {isMobile && (
-                <Tooltip title="Näytä lohkolista">
+                <Tooltip title={t('showFieldList')}>
                   <IconButton
                     onClick={() => setListOpen(true)}
                     size="small"
                     sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}
-                    aria-label="Näytä lohkolista"
+                    aria-label={t('showFieldList')}
                   >
                     <GrassIcon fontSize="small" color="primary" />
                   </IconButton>
@@ -228,13 +210,13 @@ export default function FieldsPage() {
               <NdviMapViewer
                 fieldId={selectedField.id}
                 fieldName={selectedField.name}
-                geometry={selectedField.geometry}   // ← lisää tämä
+                geometry={selectedField.geometry}
               />
             ) : (
               <Paper sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Box sx={{ textAlign: 'center' }}>
                   <GrassIcon sx={{ fontSize: 48, color: 'action.disabled', mb: 1 }} />
-                  <Typography color="text.secondary">Valitse lohko vasemmalta</Typography>
+                  <Typography color="text.secondary">{t('selectField')}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     tai lisää uusi GeoJSON-haulla
                   </Typography>

@@ -1,16 +1,12 @@
-import { Box, Typography, Paper } from '@mui/material';
-import BarChartIcon from '@mui/icons-material/BarChart';
+import { useTranslation } from 'react-i18next';
+import { Box, Typography } from '@mui/material';
 
 export default function AnalysisPage() {
+  const { t } = useTranslation();
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-        <BarChartIcon color="primary" />
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>Analyysi</Typography>
-      </Box>
-      <Paper sx={{ p: 3 }}>
-        <Typography color="text.secondary">NDVI-analyysi ja ennusteet tulevat tähän.</Typography>
-      </Paper>
+      <Typography variant="h5" sx={{ fontWeight: 700 }}>{t('analysis')}</Typography>
+      <Typography color="text.secondary">{t('analysisPlaceholder')}</Typography>
     </Box>
   );
 }

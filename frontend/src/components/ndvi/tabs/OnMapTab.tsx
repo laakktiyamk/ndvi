@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Box, Typography, Alert } from '@mui/material';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -15,6 +16,7 @@ const fmt = (date: string) =>
   new Date(date).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
 export default function OnMapTab({ entry, entries, selectedIndex, onSelect }: Props) {
+  const { t } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);
   const overlayRef = useRef<L.ImageOverlay | null>(null);
@@ -22,8 +24,6 @@ export default function OnMapTab({ entry, entries, selectedIndex, onSelect }: Pr
 
   const image = entry.image;
 
-  // Alustus rAF:lla — varmistaa että DOM-elementillä on oikea koko
-  // ennen Leaflet-initia. Ilman tätä Leaflet saa height:0 flex-kontainerissa.
   useEffect(() => {
     if (!image || mapInitialized.current) return;
 
@@ -61,7 +61,6 @@ export default function OnMapTab({ entry, entries, selectedIndex, onSelect }: Pr
     };
   }, []);
 
-  // Päivitä overlay kun entry vaihtuu
   useEffect(() => {
     if (!leafletRef.current || !image) return;
     const bounds = L.latLngBounds([
@@ -75,17 +74,14 @@ export default function OnMapTab({ entry, entries, selectedIndex, onSelect }: Pr
   }, [entry.sentinelid]);
 
   if (!image) {
-    return <Alert severity="info" sx={{ m: 2 }}>Tälle päivälle ei ole kuvaoverlaylle tarvittavia tietoja.</Alert>;
+    return <Alert severity="info" sx={{ m: 2 }}>{t('noMapData')}</Alert>;
   }
-
-  const isFirst = selectedIndex === 0;
-  const isLast = selectedIndex === entries.length - 1;
 
   return (
     <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ px: 2, py: 1, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
-        <Typography variant="caption" color="text.secondary">
-          NDVI satelliittikuva kartalla — {fmt(entry.generationtime)}
+        <Typography variant="caption" color="text.secondary">          
+          {t('ndviOnMap')} — {fmt(entry.generationtime)}
         </Typography>
       </Box>
 

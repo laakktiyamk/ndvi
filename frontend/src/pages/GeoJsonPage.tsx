@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Alert,
@@ -25,6 +26,7 @@ interface FieldInfo {
 }
 
 export default function GeoJsonPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const {
@@ -80,12 +82,10 @@ export default function GeoJsonPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
         <MapIcon color="primary" />
         <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          GeoJSON — Hae NDVI-kuvat
+          {t('geoJsonTitle')}
         </Typography>
-
       </Box>
 
-      {/* Accordion — sulkeutuu kun haku käynnistyy */}
       <Accordion
         expanded={accordionOpen}
         onChange={(_, expanded) => setAccordionOpen(expanded)}
@@ -94,9 +94,8 @@ export default function GeoJsonPage() {
         <AccordionSummary expandIcon={<ExpandMoreIcon />}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography sx={{ fontWeight: 500 }}>
-              GeoJSON-syöte
+              {t('geoJsonInput')}
             </Typography>
-
             {fieldInfo?.name && (
               <Chip label={fieldInfo.name} size="small" color="primary" variant="outlined" />
             )}
@@ -106,31 +105,23 @@ export default function GeoJsonPage() {
           <Stack spacing={2}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               <TextField
-                label="Alkupäivä"
+                label={t('startDate')}
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                slotProps={{
-                  inputLabel: {
-                    shrink: true,
-                  },
-                }}
+                slotProps={{ inputLabel: { shrink: true } }}
                 fullWidth
                 size="small"
               />
               <TextField
-                label="Loppupäivä"
+                label={t('endDate')}
                 type="date"
                 value={today}
                 disabled
-                slotProps={{
-                  inputLabel: {
-                    shrink: true,
-                  },
-                }}
+                slotProps={{ inputLabel: { shrink: true } }}
                 fullWidth
                 size="small"
-                helperText="Aina kuluva päivä"
+                helperText={t('alwaysToday')}
               />
             </Stack>
 
@@ -145,7 +136,6 @@ export default function GeoJsonPage() {
         </AccordionDetails>
       </Accordion>
 
-      {/* Tulokset */}
       <Paper sx={{ p: 2.5 }}>
         <Stack spacing={2}>
 
@@ -153,7 +143,7 @@ export default function GeoJsonPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CircularProgress size={16} />
               <Typography variant="caption" color="text.secondary">
-                Haetaan sijaintitietoja...
+                {t('fetchingLocation')}
               </Typography>
             </Box>
           )}
@@ -163,15 +153,10 @@ export default function GeoJsonPage() {
               <Typography
                 variant="caption"
                 color="text.secondary"
-                sx={{
-                  fontWeight: 600,
-                  display: 'block',
-                  mb: 1,
-                }}
+                sx={{ fontWeight: 600, display: 'block', mb: 1 }}
               >
-                TUNNISTETTU SIJAINTI
+                {t('identifiedLocation')}
               </Typography>
-
               <Divider sx={{ mb: 1.5 }} />
               <Stack spacing={1}>
                 {fieldInfo.address && (
@@ -199,21 +184,21 @@ export default function GeoJsonPage() {
           {error && <Alert severity="error">{error}</Alert>}
 
           {noDataFound && (
-            <Alert severity="info">Valitulle alueelle ei löytynyt NDVI-dataa.</Alert>
+            <Alert severity="info">{t('noNdviData')}</Alert>
           )}
 
           {loading && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <CircularProgress size={20} />
               <Typography variant="body2" color="text.secondary">
-                Haetaan NDVI-päivämääriä...
+                {t('fetchingNdviDates')}
               </Typography>
             </Box>
           )}
 
           {!fieldInfo && !loading && !error && !noDataFound && (
             <Typography variant="body2" color="text.secondary">
-              Liitä GeoJSON yllä olevaan kenttään aloittaaksesi.
+              {t('pasteGeoJsonPrompt')}
             </Typography>
           )}
 

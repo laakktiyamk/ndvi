@@ -3,6 +3,7 @@ import type { IField, IWeather, MergedNdviEntry } from '../types';
 import { getFields } from '../services/fieldService';
 import { getDatesForGeometry, fetchImagesByIds } from '../services/ndviService';
 import { getWeatherForGeometry } from '../services/weatherService';
+import i18n from '../i18n/i18n';
 
 interface AppState {
   // ── Fields (lista) ──────────────────────────────
@@ -78,7 +79,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ fields: res.data, fieldsFetched: true, fieldsLoading: false });
     } catch (err: unknown) {
       set({
-        fieldsError: err instanceof Error ? err.message : 'Haku epäonnistui',
+        fieldsError: err instanceof Error ? err.message : i18n.t('fetchFailed'),
         fieldsLoading: false,
       });
     }
@@ -122,14 +123,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       getWeatherForGeometry(field.id)
         .then((data) => set({ weatherData: data, weatherLoading: false }))
         .catch((e: unknown) => set({
-          weatherError: e instanceof Error ? e.message : 'Säädata epäonnistui',
+          weatherError: e instanceof Error ? e.message : i18n.t('weatherFailed'),
           weatherLoading: false,
         }));
 
     } catch (e: unknown) {
       set({
         imagesLoading: false,
-        imagesError: e instanceof Error ? e.message : 'Haku epäonnistui',
+        imagesError: e instanceof Error ? e.message : i18n.t('fetchFailed'),
       });
     }
   },
@@ -164,7 +165,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       getWeatherForGeometry(datesRes.id)
         .then((data) => set({ weatherData: data, weatherLoading: false }))
         .catch((e: unknown) => set({
-          weatherError: e instanceof Error ? e.message : 'Säädata epäonnistui',
+          weatherError: e instanceof Error ? e.message : i18n.t('weatherFailed'),
           weatherLoading: false,
         }));
 
@@ -172,7 +173,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (e: unknown) {
       set({
         imagesLoading: false,
-        imagesError: e instanceof Error ? e.message : 'Haku epäonnistui',
+        imagesError: e instanceof Error ? e.message : i18n.t('fetchFailed'),
       });
       return null;
     }
