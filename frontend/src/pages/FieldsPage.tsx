@@ -42,6 +42,13 @@ export default function FieldsPage() {
 
   useEffect(() => { fetchFields(); }, [fetchFields]);
 
+  // Kun nav-drawer klikkaa "Fields" uudelleen, state.openList avaa listan
+  useEffect(() => {
+    if (location.state?.openList) {
+      setListOpen(true);
+    }
+  }, [location.state]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);

@@ -1,4 +1,4 @@
-import { useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box, Paper, Typography, IconButton, Chip,
@@ -117,8 +117,14 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     .filter(e => getYear(e.generationtime) === selectedYear)
     .sort((a, b) => new Date(a.generationtime).getTime() - new Date(b.generationtime).getTime());
 
-  const selectedDate = filteredImages.length > 0
+  /*
+    const selectedDate = filteredImages.length > 0
     ? new Date(filteredImages[index].generationtime)
+    : null;
+*/
+
+  const selectedDate = filteredImages.length > 0
+    ? new Date(filteredImages[Math.min(index, filteredImages.length - 1)].generationtime)
     : null;
 
   useEffect(() => {
@@ -173,8 +179,15 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!filteredImages.length) return <Alert severity="info">{t('noImages')}</Alert>;
 
-  const current = filteredImages[index];
+  //const current = filteredImages[index];
+  //const imageDate = current.generationtime;
+
+
+  const safeIndex = Math.min(index, Math.max(0, filteredImages.length - 1));
+  const current = filteredImages[safeIndex];
+  if (!current) return null;
   const imageDate = current.generationtime;
+
   const isFirst = index === 0;
   const isLast = index === filteredImages.length - 1;
   const dataUrl = current.image?.image.dataUrl;

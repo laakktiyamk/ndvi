@@ -100,6 +100,7 @@ export default function AppLayout({ themeMode, onToggleTheme }: Props) {
         drawerWidth={DRAWER_WIDTH}
         navOpen={navOpen}
         onNavClose={() => setNavOpen(false)}
+        onNavOpen={() => setNavOpen(true)}
       />
 
       <Box

@@ -23,7 +23,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { labelKey: 'dashboard', icon: <DashboardIcon />, path: '/' },
   { labelKey: 'fields',    icon: <LayersIcon />,    path: '/fields' },
-  { labelKey: 'geojson',   icon: <UploadFileIcon />,path: '/geojson' },
+  { labelKey: 'geojson',   icon: <UploadFileIcon />, path: '/geojson' },
   { labelKey: 'weather',   icon: <WbSunnyIcon />,   path: '/weather',  requiresField: true },
   { labelKey: 'analysis',  icon: <BarChartIcon />,  path: '/analysis', requiresField: true },
 ];
@@ -35,14 +35,29 @@ interface Props {
   drawerWidth: number;
   navOpen: boolean;
   onNavClose: () => void;
+  onNavOpen: () => void;
 }
 
-export default function NavDrawer({ open, onClose, isMobile, navOpen }: Props) {
+export default function NavDrawer({ open, onClose, isMobile, navOpen, onNavOpen }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { selectedFieldId, activeGeometryHash } = useAppStore();
   const hasField = !!(selectedFieldId || activeGeometryHash);
+
+  const handleNavClick = (path: string) => {
+    // Kun navigoidaan /fields-sivulle, välitetään state joka avaa listan
+    if (path === '/fields') {
+      navigate(path, { state: { openList: true } });
+    } else {
+      navigate(path);
+    }
+    if (isMobile) {
+      onClose();
+    } else {
+      onNavOpen();
+    }
+  };
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -58,7 +73,7 @@ export default function NavDrawer({ open, onClose, isMobile, navOpen }: Props) {
               <ListItemButton
                 selected={selected}
                 disabled={disabled}
-                onClick={() => { navigate(item.path); onClose(); }}
+                onClick={() => handleNavClick(item.path)}
                 sx={{ borderRadius: 1, mx: 1 }}
               >
                 <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
