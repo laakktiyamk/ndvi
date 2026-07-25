@@ -1,5 +1,4 @@
 import mongoose, { Document, Schema } from "mongoose";
-import uniqueValidator from "mongoose-unique-validator";
 
 interface IDateItem {
   generationtime: string;
@@ -20,7 +19,7 @@ interface IGeometry {
 interface IDates extends Document {
   id: string;
   name: string;
-  userIds: string[];    // ← array, useampi käyttäjä voi omistaa saman geometrian
+  userIds: string[];
   dates: IDateItem[];
   geometry: IGeometry;
   area: number;
@@ -29,13 +28,14 @@ interface IDates extends Document {
 const DatesSchema: Schema = new Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, default: '' },
-  userIds: { type: [String], default: [] },  // ← lisätty
+  userIds: { type: [String], default: [] },
   dates: { type: Array, default: [] },
   geometry: { type: Object, required: true, unique: true },
   area: { type: Number },
 });
 
-DatesSchema.plugin(uniqueValidator);
+// 🔥 Plugin poistettu — ei ESM-ongelmia
+// DatesSchema.plugin(uniqueValidator);
 
 const DatesModel: mongoose.Model<IDates> = mongoose.model<IDates>("Dates", DatesSchema);
 

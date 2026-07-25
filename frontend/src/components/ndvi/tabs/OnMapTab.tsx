@@ -15,7 +15,7 @@ interface Props {
 const fmt = (date: string) =>
   new Date(date).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
-export default function OnMapTab({ entry, entries, selectedIndex, onSelect }: Props) {
+export default function OnMapTab({ entry }: Props) {
   const { t } = useTranslation();
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);

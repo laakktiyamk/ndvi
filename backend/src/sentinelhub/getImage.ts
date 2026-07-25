@@ -1,4 +1,5 @@
 import * as sentinelHub from "@sentinel-hub/sentinelhub-js";
+
 import { bbox as get_bounding_box } from "@turf/bbox";
 
 import { calculateHeight, calculateWidth } from "../utils/calculateDim";
@@ -73,7 +74,7 @@ export const getImage = async (date: Date | string, geometry: GeoJSONPolygon): P
     width: width,
     height: height,
     format: sentinelHub.MimeTypes.PNG,
-    geometry: geometry,
+    geometry: geometry as unknown as any
   };
 
   try {

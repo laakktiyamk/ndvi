@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import axios from "axios";
-import pLimit from 'p-limit';
 import * as hash from "../utils/hash";
 import jwt from 'jsonwebtoken';
 const geoUtils = require("../utils/geoUtils");
@@ -20,6 +19,10 @@ interface JwtPayload {
   _id: string;
   username: string;
 }
+
+// ============================================================
+// JWT helper
+// ============================================================
 
 const getUserId = (req: Request): string => {
   try {
@@ -70,6 +73,46 @@ interface SentinelDate {
 let globalAuthToken: string | null | undefined = null;
 
 // ============================================================
+// p-limit korvaaja (toimii CommonJS + Docker)
+// ============================================================
+
+function createLimit(concurrency: number) {
+  let activeCount = 0;
+  const queue: (() => void)[] = [];
+
+  const next = () => {
+    activeCount--;
+    if (queue.length > 0) {
+      const fn = queue.shift();
+      if (fn) fn();
+    }
+  };
+
+  return function limit<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      const run = () => {
+        activeCount++;
+        fn()
+          .then((val) => {
+            resolve(val);
+            next();
+          })
+          .catch((err) => {
+            reject(err);
+            next();
+          });
+      };
+
+      if (activeCount < concurrency) {
+        run();
+      } else {
+        queue.push(run);
+      }
+    });
+  };
+}
+
+// ============================================================
 // Helpers
 // ============================================================
 
@@ -98,20 +141,17 @@ const getSentinelDates = async (
     for (const stat of reversedStats) {
       const statRef = stat.outputs.ndvi.bands.B0.stats;
       if (statRef.mean >= 0.1) {
-        data = [
-          ...data,
-          {
-            generationtime: stat.interval.from,
-            stats: {
-              average: statRef.mean,
-              max: statRef.max,
-              min: statRef.min,
-              std: statRef.stDev,
-            },
-            sentinelid: stat.interval.from + "_" + hash.sha256(geometry),
-            ndviClassPercentages: stat.ndviClassPercentages,
+        data.push({
+          generationtime: stat.interval.from,
+          stats: {
+            average: statRef.mean,
+            max: statRef.max,
+            min: statRef.min,
+            std: statRef.stDev,
           },
-        ];
+          sentinelid: stat.interval.from + "_" + hash.sha256(geometry),
+          ndviClassPercentages: stat.ndviClassPercentages,
+        });
       }
     }
   } else {
@@ -158,12 +198,15 @@ const saveSentinelDataToMongo = async (
     console.log(dates.length, " STATISTICS ElapsedTime (sec): ", (performance.now() - startTime) / 1000);
 
     if (dates.length > 0) {
-      const limit = pLimit(5);
-      await axios.all(
-        dates.map(item => limit(async () => {
-          const _data = await getImageWithData(item, geometry);
-          if (_data) await mongodb.saveImage(_data);
-        }))
+      const limit = createLimit(5);
+
+      await Promise.all(
+        dates.map(item =>
+          limit(async () => {
+            const _data = await getImageWithData(item, geometry);
+            if (_data) await mongodb.saveImage(_data);
+          })
+        )
       );
 
       savedDates = dates.map(({ ndviClassPercentages, ...rest }) => rest);
@@ -199,7 +242,7 @@ async function getDates(
         await saveSentinelDataToMongo(false, geometry, newFromTime, toTime, name, userId);
       }
     }
-    // Päivitä nimi ja userId jos puuttuu
+
     if ((name && !data.name) || (userId && !data.userIds?.includes(userId))) {
       await mongodb.saveDates(id, data.dates, geometry, data.area ?? 0, name || data.name, userId);
     }
@@ -223,9 +266,6 @@ export const AOIs = async (req: Request, res: Response, next: NextFunction): Pro
 export const dates = async (req: SentinelRequest, res: Response, next: NextFunction): Promise<void> => {
   globalAuthToken = req.authToken;
   const startTime = performance.now();
-  //let updateDbFlag = false;
-
-  //try { updateDbFlag = req.body.updateDb; } catch (e) { updateDbFlag = false; }
 
   let geometry: any = null;
   try {
@@ -238,7 +278,7 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
   const fromTime = new Date(req.body.start_date);
   const toTime   = new Date();
   const name     = req.body.name ?? '';
-  const userId   = getUserId(req);     // ← puretaan JWT:stä
+  const userId   = getUserId(req);
 
   const data = await getDates(true, geometry, fromTime, toTime, name, userId);
   console.log("Request handled in (sec): ", (performance.now() - startTime) / 1000);
@@ -247,19 +287,15 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
   await getWeatherFromDbOrFetch(geometry, fromTime, toTime);
   console.log("Weather saved in (sec): ", (performance.now() - wStart) / 1000);
 
-  //if (updateDbFlag) {
-    //res.status(222).send("done");
-  //} else {
-    if (data) {
-      res.status(200).send(data);
-    } else {
-      res.status(404).send("no data available");
-    }
-  //}
+  if (data) {
+    res.status(200).send(data);
+  } else {
+    res.status(404).send("no data available");
+  }
 };
 
 // ============================================================
-// Image handler
+// Image handlers
 // ============================================================
 
 interface RawImageData {
@@ -309,8 +345,7 @@ export const images = async (req: Request, res: Response, next: NextFunction): P
 
   try {
     const rawData: IImage[] = await mongodb.getImagesByIds(ids);
-    
-    // Muodostetaan Record<sentinelid, image>
+
     const imageMap = rawData.reduce((acc, item) => {
       acc[item.id] = {
         ...item,

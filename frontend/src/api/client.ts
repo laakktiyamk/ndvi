@@ -6,13 +6,6 @@ export const apiClient = axios.create({
 });
 
 // JWT lisätään automaattisesti joka pyyntöön
-/*
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-*/
 
 apiClient.interceptors.request.use((config) => {
   const authStorage = localStorage.getItem('auth-storage');

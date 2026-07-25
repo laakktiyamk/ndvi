@@ -51,6 +51,7 @@ declare global {
  */
 export const authenticateUser = (req: Request, res: Response, next: NextFunction) => {
   
+  
   const url = req.originalUrl; 
   if (url === "/" || url.includes("login") || url.includes("register")) {
     return next();

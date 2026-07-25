@@ -1,42 +1,41 @@
 import express from "express";
 import routes from "./routes/";
-import {authenticateUser} from './middleware/validateToken';
-
+import { authenticateUser } from "./middleware/validateToken";
+import morgan from "morgan";
+import path from "path";
 
 const cors = require("cors");
-//const logger = require("morgan");
-import morgan from "morgan";
-
-
-
-// ...
 
 const app = express();
 
-app.use((req, res, next) => {
-  console.log(">>> REQUEST HIT:", req.method, req.url);
-  next();
-});
-
-app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
-  next();
-});
-
-
+// Loggerit
 app.use(morgan("dev"));
-//app.use(logger("dev"));
 
-
+// CORS ja JSON
 app.use(cors());
-
 app.use(express.json());
 
-app.use(authenticateUser);
+// JWT-middleware API-reiteille
+//app.use(authenticateUser);
 
-app.use("/api", routes);
+// API-reitit (aina ennen frontend-palvelua)
+//app.use("/api", routes);
+app.use("/api", authenticateUser, routes);
+
+// Palvelee frontendin buildin
+
+const frontendPath =
+  process.env.NODE_ENV === "production"
+    ? path.join(__dirname, "frontend")
+    : path.join(__dirname, "../../frontend/dist");
+
+
+app.use(express.static(frontendPath));
+
+
+// SPA fallback — kaikki muut reitit → index.html
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, "dist/frontend", "index.html"));
+});
 
 export default app;
-
-
-

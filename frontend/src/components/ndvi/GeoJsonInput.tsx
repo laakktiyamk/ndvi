@@ -5,8 +5,7 @@ import {
   CircularProgress, Collapse,
 } from '@mui/material';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
-import { hint } from "@mapbox/geojsonhint";
-import rewind from "@turf/rewind";
+import { apiClient } from '../../api/client'; 
 
 function fixGeoJSON(text: string): string {
   text = text.replace(/(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
@@ -14,20 +13,9 @@ function fixGeoJSON(text: string): string {
   return text;
 }
 
-async function validateGeoJSON(geojson: object): Promise<{ valid: boolean; errors: string[] }> {
-  try {
-    const fixed = rewind(geojson as any, { mutate: false });
-    const errors = hint(fixed);
-    return {
-      valid: errors.length === 0,
-      errors: errors.map((e: { message: string }) => e.message),
-    };
-  } catch (err) {
-    return {
-      valid: false,
-      errors: ["Invalid input: " + (err instanceof Error ? err.message : String(err))],
-    };
-  }
+async function validateGeoJSON(geojson: object): Promise<{ valid: boolean; errors: string[]; geometry?: object }> {
+  const response = await apiClient.post('/api/validate/geojson', { geometry: geojson });
+  return response.data;
 }
 
 interface Props {
@@ -77,13 +65,17 @@ export default function GeoJsonInput({
 
     setJsonError(null);
     setValidating(true);
-    const result = await validateGeoJSON(parsed);
-    setValidating(false);
-    setGeojsonErrors(result.errors ?? []);
-
-    if (result.valid) {
-      setValidGeoJson(parsed);
-      onValid(parsed);
+    try {
+      const result = await validateGeoJSON(parsed);
+      setGeojsonErrors(result.errors ?? []);
+      if (result.valid && result.geometry) {
+        setValidGeoJson(result.geometry);
+        onValid(result.geometry);
+      }
+    } catch {
+      setGeojsonErrors(['Validation request failed']);
+    } finally {
+      setValidating(false);
     }
   }, [onInputChange, onValid]);
 

@@ -68,8 +68,7 @@ export default function FieldsPage() {
   const selectedField = fields.find((f) => f.id === selectedFieldId);
 
   const filteredFields = fields.filter(f =>
-    f.name.toLowerCase().includes(search.toLowerCase()));
-
+    f.name.toLowerCase().includes(debouncedSearch.toLowerCase()));
   const showList = !isMobile || listOpen;
   const showMap = !isMobile || !listOpen;
 

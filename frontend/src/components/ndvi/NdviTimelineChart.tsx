@@ -79,7 +79,11 @@ export default function NdviTimelineChart({ entries, selectedIndex, onSelect, ch
           const num = typeof v === 'number' ? v : Number(v);
           return [num.toFixed(3), 'NDVI avg'];
         }}
-        labelFormatter={(label) => new Date(label).toLocaleDateString('fi-FI')}
+        labelFormatter={(label) => {
+          const value = String(label);
+          return new Date(value).toLocaleDateString('fi-FI');
+        }}
+
       />
     </>
   );

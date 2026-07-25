@@ -2,8 +2,6 @@
 
 const { calculateAutoDimensions }: any = require("./bboxRatio");
 
-
-
 /**
  * Calculates the width dimension based on the given geometry and height.
  *

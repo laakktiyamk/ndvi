@@ -79,3 +79,6 @@ export interface IWeather {
   et0_fao_evapotranspiration: number | null;
   createdAt: string;
 }
+
+
+export type Lang = 'fi' | 'en';
