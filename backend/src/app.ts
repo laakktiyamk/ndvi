@@ -16,10 +16,8 @@ app.use(cors());
 app.use(express.json());
 
 // JWT-middleware API-reiteille
-//app.use(authenticateUser);
-
 // API-reitit (aina ennen frontend-palvelua)
-//app.use("/api", routes);
+
 app.use("/api", authenticateUser, routes);
 
 // Palvelee frontendin buildin
@@ -34,8 +32,9 @@ app.use(express.static(frontendPath));
 
 
 // SPA fallback — kaikki muut reitit → index.html
+
 app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, "dist/frontend", "index.html"));
+  res.sendFile(path.join(frontendPath, "index.html"));
 });
 
 export default app;
