@@ -54,8 +54,19 @@ jobs:
           # 3. Ladataan uusin versio Docker Hubista
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ndvi-test:latest
           
-          # 4. Käynnistetään kontti ja syötetään sille tietokantaosoite ympäristömuuttujana
-          docker run -d -p 80:8080 -e MONGO_URI="${{ secrets.MONGO_URI }}" --name ndvi-test ${{ secrets.DOCKERHUB_USERNAME }}/ndvi-test:latest
-          
+          # 4. Käynnistetään kontti ja syötetään sille tietokantaosoite ympäristömuuttujana          
+          docker run -d \
+          -p 80:8000 \
+          -e MONGO_URI="${{ secrets.MONGO_URI }}" \
+          -e SECRET="${{ secrets.SECRET }}" \
+          -e PORT="8000" \
+          -e sentinelHubClientId="${{ secrets.SENTINEL_HUB_CLIENT_ID }}" \
+          -e sentinelHubClientSecret="${{ secrets.SENTINEL_HUB_CLIENT_SECRET }}" \
+          -e MML_API_KEY="${{ secrets.MML_API_KEY }}" \
+          --name ndvi-test \
+          --restart unless-stopped \
+          ${{ secrets.DOCKERHUB_USERNAME }}/ndvi-test:latest
+
+
           # 5. Siivotaan vanhat turhat imaget tilaa viemästä
           docker image prune -f
