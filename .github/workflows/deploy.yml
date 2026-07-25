@@ -1,4 +1,4 @@
-name: Build, Push and Deploy MERN App
+name: Build, Push and Deploy NDVI App
 
 on:
   push:
@@ -7,8 +7,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: latest
 
     steps:
     - name: Checkout code
@@ -45,28 +43,30 @@ jobs:
         username: ${{ secrets.EC2_USERNAME }}
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
+          # 0. Kirjaudutaan Docker Hubiin
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
           # 1. Pysäytetään vanha kontti
           docker stop ndvi-test || true
-          
-          # 2. Poistetaan vanha kontti alta pois
+
+          # 2. Poistetaan vanha kontti
           docker rm ndvi-test || true
-          
+
           # 3. Ladataan uusin versio Docker Hubista
           docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ndvi-test:latest
-          
-          # 4. Käynnistetään kontti ja syötetään sille tietokantaosoite ympäristömuuttujana          
+
+          # 4. Käynnistetään kontti ympäristömuuttujilla
           docker run -d \
-          -p 80:8000 \
-          -e MONGO_URI="${{ secrets.MONGO_URI }}" \
-          -e SECRET="${{ secrets.SECRET }}" \
-          -e PORT="8000" \
-          -e sentinelHubClientId="${{ secrets.SENTINEL_HUB_CLIENT_ID }}" \
-          -e sentinelHubClientSecret="${{ secrets.SENTINEL_HUB_CLIENT_SECRET }}" \
-          -e MML_API_KEY="${{ secrets.MML_API_KEY }}" \
-          --name ndvi-test \
-          --restart unless-stopped \
-          ${{ secrets.DOCKERHUB_USERNAME }}/ndvi-test:latest
+            -p 80:8000 \
+            -e MONGO_URI="${{ secrets.MONGO_URI }}" \
+            -e SECRET="${{ secrets.SECRET }}" \
+            -e PORT="8000" \
+            -e sentinelHubClientId="${{ secrets.SENTINEL_HUB_CLIENT_ID }}" \
+            -e sentinelHubClientSecret="${{ secrets.SENTINEL_HUB_CLIENT_SECRET }}" \
+            -e MML_API_KEY="${{ secrets.MML_API_KEY }}" \
+            --name ndvi-test \
+            --restart unless-stopped \
+            ${{ secrets.DOCKERHUB_USERNAME }}/ndvi-test:latest
 
-
-          # 5. Siivotaan vanhat turhat imaget tilaa viemästä
+          # 5. Siivotaan vanhat imaget
           docker image prune -f
