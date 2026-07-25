@@ -46,16 +46,16 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           # 1. Pysäytetään vanha kontti
-          docker stop express-kokeilu || true
+          docker stop ndvi-test || true
           
           # 2. Poistetaan vanha kontti alta pois
-          docker rm express-kokeilu || true
+          docker rm ndvi-test || true
           
           # 3. Ladataan uusin versio Docker Hubista
-          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/express-kokeilu:latest
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/ndvi-test:latest
           
           # 4. Käynnistetään kontti ja syötetään sille tietokantaosoite ympäristömuuttujana
-          docker run -d -p 80:8080 -e MONGO_URI="${{ secrets.MONGO_URI }}" --name express-kokeilu ${{ secrets.DOCKERHUB_USERNAME }}/express-kokeilu:latest
+          docker run -d -p 80:8080 -e MONGO_URI="${{ secrets.MONGO_URI }}" --name ndvi-test ${{ secrets.DOCKERHUB_USERNAME }}/ndvi-test:latest
           
           # 5. Siivotaan vanhat turhat imaget tilaa viemästä
           docker image prune -f
