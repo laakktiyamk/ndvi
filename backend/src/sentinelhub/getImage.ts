@@ -63,6 +63,7 @@ export const getImage = async (date: Date | string, geometry: GeoJSONPolygon): P
     }
     `;
 
+  // S2L2ALayer on parempi vaihtoehto, mutta se ei ole saatavilla kaikilla tileillä. S2L1CLayer on käytettävissä kaikilla tileillä.  
   const layer = new sentinelHub.S2L1CLayer({ evalscript, maxCloudCoverPercent: 20 });
   const { width, height } = await getWidthAndHeight(geometry);
   const bbox = get_bounding_box(geometry as any);

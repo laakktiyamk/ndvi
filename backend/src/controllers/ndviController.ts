@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import axios from "axios";
+import rewind from '@turf/rewind';
+//import axios from "axios";
 import * as hash from "../utils/hash";
-import jwt from 'jsonwebtoken';
 const geoUtils = require("../utils/geoUtils");
-import { getStatistics } from "../sentinelhub/getStatistics";
-import * as imageRef from "../sentinelhub/getImage";
+import { getStatistics } from "../sentinelhub/getStatistics_CDSE";
+//import * as imageRef from "../sentinelhub/getImage";
+import {getImage} from "../sentinelhub/getImage_CDSE";
 import * as imageDataRef from "../utils/image/getImageData";
 import * as dateTime from "../utils/dateTime";
 import * as mongodb from "../mongo/mongodb";
@@ -13,27 +14,14 @@ import isDateInGrowingSeason from "../utils/isdateingrowingseason";
 import { SentinelRequest } from "../sentinelhub/sentinelhub_token";
 import { IImage } from '../types';
 import { getWeatherFromDbOrFetch } from '../services/weatherService';
-import rewind from '@turf/rewind';
+
+import { getUserId } from '../utils/getTokenUserId'
 
 interface JwtPayload {
   _id: string;
   username: string;
 }
 
-// ============================================================
-// JWT helper
-// ============================================================
-
-const getUserId = (req: Request): string => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return '';
-    const decoded = jwt.verify(token, process.env.SECRET as string) as JwtPayload;
-    return decoded._id;
-  } catch {
-    return '';
-  }
-};
 
 // ============================================================
 // Interfaces
@@ -70,7 +58,6 @@ interface SentinelDate {
   ndviClassPercentages: number[];
 }
 
-let globalAuthToken: string | null | undefined = null;
 
 // ============================================================
 // p-limit korvaaja (toimii CommonJS + Docker)
@@ -119,7 +106,8 @@ function createLimit(concurrency: number) {
 const getSentinelDates = async (
   geometry: any,
   fromTime: Date | null,
-  toTime: Date
+  toTime: Date,
+  authToken: string
 ): Promise<SentinelDate[]> => {
   let data: SentinelDate[] = [];
   let stats: SentinelStat[] = [];
@@ -129,7 +117,7 @@ const getSentinelDates = async (
       geometry,
       fromTime?.toISOString() ?? "",
       toTime.toISOString(),
-      globalAuthToken ?? ""
+      authToken
     ) as unknown as SentinelStat[];
   } catch (e: any) {
     console.error("#### Error fetching statistics: ", e.error ? e.error.message : e.message);
@@ -161,8 +149,8 @@ const getSentinelDates = async (
   return data;
 };
 
-const getImageWithData = async (item: SentinelDate, geometry: any): Promise<any> => {
-  const image = await imageRef.getImage(item.generationtime, geometry);
+const getImageWithData = async (item: SentinelDate, geometry: any, authToken: string): Promise<any> => {
+  const image = await getImage(item.generationtime, geometry, authToken);
   if (image) {
     const data = await imageDataRef.getImageData(
       geometry, image,
@@ -179,6 +167,7 @@ const saveSentinelDataToMongo = async (
   geometry: any,
   fromTime: Date | null,
   toTime: Date,
+  authToken: string,
   name: string = '',
   userId: string = ''
 ): Promise<boolean> => {
@@ -194,16 +183,17 @@ const saveSentinelDataToMongo = async (
     }
 
     const startTime = performance.now();
-    const dates = await getSentinelDates(geometry, fromTime, toTime);
+    const dates = await getSentinelDates(geometry, fromTime, toTime,authToken);
     console.log(dates.length, " STATISTICS ElapsedTime (sec): ", (performance.now() - startTime) / 1000);
-
+    
     if (dates.length > 0) {
+      const startTime = performance.now();
       const limit = createLimit(5);
 
       await Promise.all(
         dates.map(item =>
           limit(async () => {
-            const _data = await getImageWithData(item, geometry);
+            const _data = await getImageWithData(item, geometry,authToken);
             if (_data) await mongodb.saveImage(_data);
           })
         )
@@ -212,6 +202,7 @@ const saveSentinelDataToMongo = async (
       savedDates = dates.map(({ ndviClassPercentages, ...rest }) => rest);
       savedDates = dateTime.sortByDateTime(savedDates, "generationtime", "desc");
       res = await mongodb.updateDates(id, savedDates, userId);
+      console.log(dates.length, " IMAGES ElapsedTime (sec): ", (performance.now() - startTime) / 1000);
       return res;
     }
 
@@ -227,6 +218,7 @@ async function getDates(
   geometry: any,
   fromTime: Date | null,
   toTime: Date,
+  authToken: string,
   name: string = '',
   userId: string = ''
 ): Promise<any> {
@@ -234,7 +226,7 @@ async function getDates(
   let data = await mongodb.getDates(id);
 
   if (!data || !data.dates || data.dates.length === 0) {
-    await saveSentinelDataToMongo(true, geometry, fromTime, toTime, name, userId);
+    await saveSentinelDataToMongo(true, geometry, fromTime, toTime, authToken, name, userId);
   } else {
     if (isDateInGrowingSeason(toTime, growingSeason)) {
       if (data.dates[0].generationtime < dateTime.zeroDateTime(toTime)) {
@@ -264,7 +256,8 @@ export const AOIs = async (req: Request, res: Response, next: NextFunction): Pro
 };
 
 export const dates = async (req: SentinelRequest, res: Response, next: NextFunction): Promise<void> => {
-  globalAuthToken = req.authToken;
+  //globalAuthToken = req.authToken;
+  const authToken = req.authToken ?? '';
   const startTime = performance.now();
 
   let geometry: any = null;
@@ -280,7 +273,7 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
   const name     = req.body.name ?? '';
   const userId   = getUserId(req);
 
-  const data = await getDates(true, geometry, fromTime, toTime, name, userId);
+  const data = await getDates(true, geometry, fromTime, toTime, authToken, name, userId);
   console.log("Request handled in (sec): ", (performance.now() - startTime) / 1000);
 
   const wStart = performance.now();

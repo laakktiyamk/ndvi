@@ -2,25 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 import centroid from '@turf/centroid';
 import rewind from '@turf/rewind';
 import axios from 'axios';
+import jwt from 'jsonwebtoken';
 import { Geometry } from 'geojson';
 import * as mongodb from '../mongo/mongodb';
-import jwt from 'jsonwebtoken';
+import { getUserId } from '../utils/getTokenUserId'
 
 interface JwtPayload {
   _id: string;
   username: string;
 }
-
-const getUserId = (req: Request): string => {
-  try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return '';
-    const decoded = jwt.verify(token, process.env.SECRET as string) as JwtPayload;
-    return decoded._id;
-  } catch {
-    return '';
-  }
-};
 
 // ── Reverse geocoding Nominatimilla ──────────────────────────
 const reverseGeocode = async (lat: number, lon: number): Promise<string> => {
@@ -79,7 +69,7 @@ const fetchRuokavirastoInfo = async (lat: number, lon: number): Promise<{
 export const getFieldInfo = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next?: NextFunction
 ): Promise<void> => {
   let geometry: Geometry | null = null;
   try {
@@ -126,7 +116,7 @@ export const getFieldInfo = async (
 export const getFields = async (
   req: Request,
   res: Response,
-  next: NextFunction
+  next?: NextFunction
 ): Promise<void> => {
   try {
     const userId = getUserId(req);

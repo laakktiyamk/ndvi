@@ -20,6 +20,15 @@ app.use(express.json());
 
 app.use("/api", authenticateUser, routes);
 
+
+if (process.env.NODE_ENV !== "production") {
+  
+    const devRoutes = require("./routes/devRoutes").default;
+    app.use("/dev", devRoutes);
+
+}
+
+
 // Palvelee frontendin buildin
 
 const frontendPath =

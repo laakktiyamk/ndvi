@@ -20,7 +20,7 @@ const isPostalCode = (text: string): boolean => /^\d{5}$/.test(text.trim());
 export async function geocode(
   req: Request,
   res: Response,
-  next: NextFunction
+  next?: NextFunction
 ): Promise<void> {
   try {
     const { text, size } = req.query;
@@ -53,7 +53,11 @@ export async function geocode(
 
     res.status(200).json({ query, source, results });
   } catch (error) {
-    next(error);
+    if (next) {
+      next(error);
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 }
 
