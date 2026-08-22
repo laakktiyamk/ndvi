@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box, TextField, Button, Alert, Typography,
   CircularProgress, Collapse,
 } from '@mui/material';
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
-import { apiClient } from '../../api/client'; 
+import { apiClient } from '../../api/client';
 
 function fixGeoJSON(text: string): string {
   text = text.replace(/(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
@@ -40,16 +40,13 @@ export default function GeoJsonInput({
   const [validating, setValidating] = useState(false);
   const [validGeoJson, setValidGeoJson] = useState<object | null>(null);
 
-  const handleChange = useCallback(async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const raw = e.target.value;
-    setInput(raw);
-    onInputChange?.(raw);
-    setValidGeoJson(null);
-    onValid(null);
 
+  const runValidation = useCallback(async (raw: string) => {
     if (!raw.trim()) {
       setJsonError(null);
       setGeojsonErrors([]);
+      setValidGeoJson(null);
+      onValid(null);
       return;
     }
 
@@ -77,7 +74,22 @@ export default function GeoJsonInput({
     } finally {
       setValidating(false);
     }
-  }, [onInputChange, onValid]);
+  }, [onValid]);
+
+  useEffect(() => {
+    if (!initialValue) return;
+    setInput(initialValue);
+    runValidation(initialValue);
+  }, [initialValue]);
+
+  const handleChange = useCallback(async (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const raw = e.target.value;
+    setInput(raw);
+    onInputChange?.(raw);
+    setValidGeoJson(null);
+    onValid(null);
+    await runValidation(raw);
+  }, [onInputChange, onValid, runValidation]);
 
   const isValid = validGeoJson !== null && !jsonError && geojsonErrors.length === 0;
 

@@ -193,7 +193,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const dataUrl = current.image?.image.dataUrl;
   const currentWeather = weatherData.find(w => w.sentinelid === current.sentinelid);
 
-
   // ── NDVI-kuvaviewer ───────────────────────────────────────────────────────
   const imageViewer = (
     <>

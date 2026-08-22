@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+
 /**
  * Represents a user account stored in MongoDB.
  *
@@ -39,6 +40,7 @@ const UserSchema: Schema = new Schema({
 /**
  * Mongoose model for users.
  */
+
 const UserModel: mongoose.Model<IUser> = mongoose.model<IUser>("User", UserSchema);
 
 export { UserModel as User, IUser };

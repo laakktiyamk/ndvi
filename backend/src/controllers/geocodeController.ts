@@ -8,22 +8,26 @@ const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org/search';
 
 const isPostalCode = (text: string): boolean => /^\d{5}$/.test(text.trim());
 
+
 /**
  * GET /api/geocode?text=Pöljä
- * Hakee paikan nimellä, kunnalla tai postinumerolla koordinaatit.
+ * GET /api/geocode?text=Kuopio&bbox=true
+ * Hakee paikan nimellä, kunnalla, osoitteella tai postinumerolla koordinaatit.
  *
  * Strategia:
- *  1. Postinumero (5 numeroa) → Nominatim suoraan (MML ei tue postinumerohakua)
- *  2. Muu haku → MML geographic-names + addresses ensin
- *  3. MML palauttaa [] → fallback Nominatim
+ *  1. bbox=true → Nominatim suoraan, palauttaa center + bbox karttazoomausta varten
+ *  2. Postinumero (5 numeroa) → Nominatim suoraan (MML ei tue postinumerohakua)
+ *  3. Muu haku → MML geographic-names + addresses ensin
+ *  4. MML palauttaa [] → fallback Nominatim
  */
+
 export async function geocode(
   req: Request,
   res: Response,
   next?: NextFunction
 ): Promise<void> {
   try {
-    const { text, size } = req.query;
+    const { text, size, bbox } = req.query;
 
     if (!text || typeof text !== 'string' || text.trim().length < 2) {
       res.status(400).json({ error: 'Hakusana "text" puuttuu tai on liian lyhyt' });
@@ -31,20 +35,29 @@ export async function geocode(
     }
 
     const query = text.trim();
+
+    // bbox=true → palauttaa center + bbox Nominatimista
+    if (bbox === 'true') {
+      const result = await searchNominatimBbox(query);
+      if (!result) {
+        res.status(404).json({ error: 'Paikkaa ei löydy' });
+        return;
+      }
+      res.status(200).json({ query, source: 'nominatim', ...result });
+      return;
+    }
+
     const limit = size ? Number(size) : 5;
     let results: GeocodeResult[] = [];
     let source: string;
 
     if (isPostalCode(query)) {
-      // Postinumero → Nominatim suoraan
       results = await searchNominatim(query, limit);
       source = 'nominatim';
     } else {
-      // Paikannimi tai osoite → MML ensin
       results = await searchMML(query, limit);
       source = 'mml';
 
-      // MML ei löytänyt mitään → fallback Nominatim
       if (results.length === 0) {
         results = await searchNominatim(query, limit);
         source = 'nominatim-fallback';
@@ -85,7 +98,6 @@ function mapMMLFeatures(features: GeocodeFeature[]): GeocodeResult[] {
     label: f.properties.label,
     municipality: f.properties.locality ?? f.properties.county ?? null,
     type: f.properties.layer,
-    // GeoJSON-järjestys [lon, lat] -> käännetään Leafletille [lat, lon]
     lat: f.geometry.coordinates[1],
     lon: f.geometry.coordinates[0],
   }));
@@ -102,13 +114,44 @@ async function searchNominatim(text: string, limit: number): Promise<GeocodeResu
       addressdetails: 1,
       limit,
     },
-    headers: {
-      'User-Agent': 'NDVI-sovellus/1.0',
-    },
+    headers: { 'User-Agent': 'NDVI-sovellus/1.0' },
     timeout: 5000,
   });
 
   return mapNominatimFeatures(data);
+}
+
+async function searchNominatimBbox(text: string): Promise<{
+  lat: number;
+  lon: number;
+  bbox: [[number, number], [number, number]];
+} | null> {
+  const { data } = await axios.get<NominatimFeature[]>(NOMINATIM_BASE_URL, {
+    params: {
+      format: 'json',
+      q: text,
+      countrycodes: 'fi',
+      addressdetails: 1,
+      limit: 1,
+    },
+    headers: { 'User-Agent': 'NDVI-sovellus/1.0' },
+    timeout: 5000,
+  });
+
+  if (!data?.length) return null;
+  const f = data[0];
+  const bb = f.boundingbox;
+
+  if (!bb || bb.length < 4) return null;  // ← lisää tämä
+
+  return {
+    lat: parseFloat(f.lat),
+    lon: parseFloat(f.lon),
+    bbox: [
+      [parseFloat(bb[0]), parseFloat(bb[2])],
+      [parseFloat(bb[1]), parseFloat(bb[3])],
+    ],
+  };
 }
 
 function mapNominatimFeatures(features: NominatimFeature[]): GeocodeResult[] {

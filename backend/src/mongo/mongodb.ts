@@ -15,17 +15,23 @@ import userModel from "./models/user.js";
 */
 
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config(); // ← lisää tämä myös tänne varmuuden vuoksi
 
+//console.log("mongodb.ts MONGO_URI:", process.env.MONGO_URI);
+
+
+//const mongoURI = "mongodb://127.0.0.1:27017/fielsparcelsdb"; 
 
 const mongoURI = process.env.MONGO_URI || "";
+
 
 // Establish database connection if not already connected
 if (mongoose.connection.readyState === 0) {
   mongoose
     .connect(mongoURI)
     .then(() => {
-      console.log("DB Connected!");
+      //console.log("DB Connected!");
+      console.log("Connected to MongoDB:", mongoose.connection.name);
     })
     .catch((err) => {
       console.error("Error while connecting to db: ", err);

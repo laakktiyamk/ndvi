@@ -118,3 +118,93 @@ Content-Type: application/json
 {
   "geometryHash": "f18e29d28a39d54329d9d9cfe203d70f92e4562dec61edf11d542d8ac840f115"
 }
+
+
+### GeoCode by text — Tampere
+GET http://localhost:8000/api/geocode?text=Tampere
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcxNTgxODIsImV4cCI6MTc4NzE2MTc4Mn0.2CGvEkfdtGG_E71jeNVMVovLrgDogwFWrW8lwUgvEUQ
+
+### FieldParcels to local mongoDb 
+
+  POST http://localhost:8000/dev/import-FieldParcels
+
+
+### CropParcels to local mongoDb 
+
+  POST http://localhost:8000/dev/import-CropParcels
+
+
+
+
+  ### fields.http
+
+@baseUrl = http://localhost:8000/api
+
+### Haku koordinaateilla — pelto Etelä-Pohjanmaalla (viljelysvaltainen alue)
+GET {{baseUrl}}/fields/by-location?lat=62.7897&lon=22.8514
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Haku — Varsinais-Suomi, Turku ympäristö
+GET {{baseUrl}}/fields/by-location?lat=60.5234&lon=22.3412
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Haku — Pohjanmaa
+GET {{baseUrl}}/fields/by-location?lat=63.1012&lon=21.6789
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Ei peltoa — meri (pitäisi palauttaa 404)
+GET {{baseUrl}}/fields/by-location?lat=60.1699&lon=24.9384
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Virheellinen pyyntö — puuttuvat parametrit (pitäisi palauttaa 400)
+GET {{baseUrl}}/fields/by-location?lat=62.7897
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Virheellinen pyyntö — ei numeroita (pitäisi palauttaa 400)
+GET {{baseUrl}}/fields/by-location?lat=abc&lon=xyz
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Etelä-Pohjanmaa — Seinäjoki ympäristö, laaja peltoaukea
+GET {{baseUrl}}/fields/by-location?lat=62.9021&lon=22.5134
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Häme — Forssa, viljelysvaltainen alue
+GET {{baseUrl}}/fields/by-location?lat=60.8156&lon=23.6234
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Satakunta — Kokemäki jokilaakso
+GET {{baseUrl}}/fields/by-location?lat=61.2567&lon=22.3489
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Uusimaa — Lohja ympäristö
+GET {{baseUrl}}/fields/by-location?lat=60.2489&lon=24.0123
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Pohjois-Savo — Kuopio ympäristö
+GET {{baseUrl}}/fields/by-location?lat=62.8934&lon=27.6782
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Kymenlaakso — Kouvola ympäristö
+GET {{baseUrl}}/fields/by-location?lat=60.8678&lon=26.7123
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+
+### Keskipiste kannasta — pitäisi osua johonkin
+GET {{baseUrl}}/fields/by-location?lat=61.45&lon=25.35
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Toinen
+GET {{baseUrl}}/fields/by-location?lat=60.80&lon=23.50
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Kolmas
+GET {{baseUrl}}/fields/by-location?lat=62.50&lon=25.00
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### Neljäs
+GET {{baseUrl}}/fields/by-location?lat=61.00&lon=28.00
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo
+
+### TOIMII
+GET {{baseUrl}}/fields/by-location?lat=63.3152&lon=22.8035
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcwMDIyMzUsImV4cCI6MTc4NzAwNTgzNX0.n6eQ6c3_SUChd1dJFGOOVuXktOUSOTB4H8XuDz5cLXo

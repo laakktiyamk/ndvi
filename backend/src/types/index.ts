@@ -77,6 +77,7 @@ export interface NominatimFeature {
     village?: string;
     postcode?: string;
   };
+  boundingbox?: string[];
 }
 
 export interface GeocodeFeature {

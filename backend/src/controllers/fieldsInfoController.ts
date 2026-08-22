@@ -71,13 +71,20 @@ export const getFieldInfo = async (
   res: Response,
   next?: NextFunction
 ): Promise<void> => {
+  console.log('req.body:', JSON.stringify(req.body).slice(0, 300));
+  
   let geometry: Geometry | null = null;
   try {
     const raw = typeof req.body.geometry === 'object'
       ? req.body.geometry
       : JSON.parse(req.body.geometry);
+    
+    console.log('raw.type:', raw?.type);
+    console.log('raw keys:', Object.keys(raw || {}));
+    
     geometry = rewind(raw, { mutate: false }) as unknown as Geometry;
-  } catch {
+  } catch (err) {
+    console.error('parse/rewind error:', err);
     res.status(400).json({ error: 'Invalid geometry' });
     return;
   }
@@ -104,14 +111,13 @@ export const getFieldInfo = async (
       fieldName: ruokavirasto.fieldName,
       cropType:  ruokavirasto.cropType,
       name,
-      geometry,   // ← korjattu geometria frontendille
+      geometry,
     });
   } catch (err: unknown) {
     console.error('getFieldInfo error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
-
 // ── GET /api/fields ───────────────────────────────────────────
 export const getFields = async (
   req: Request,
