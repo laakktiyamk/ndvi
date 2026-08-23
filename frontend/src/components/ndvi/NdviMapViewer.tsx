@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box, Paper, Typography, IconButton, Chip,
@@ -102,10 +102,17 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
-  const [imgLoaded, setImgLoaded] = useState(false);
   const [touchStartX, setTouchStartX] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const imageBoxRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState<string>('image');
+
+  // ── Kuvan välähdyksen esto ────────────────────────────────────────────────
+  // displayUrl = tällä hetkellä näkyvä kuva (pysyy vanhana kunnes uusi on ladattu)
+  // pendingUrl = taustalla latautuva uusi kuva
+  const [displayUrl, setDisplayUrl] = useState<string | undefined>(undefined);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const preloadRef = useRef<HTMLImageElement | null>(null);
 
   const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData } = useAppStore();
 
@@ -116,12 +123,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const filteredImages = allEntries
     .filter(e => getYear(e.generationtime) === selectedYear)
     .sort((a, b) => new Date(a.generationtime).getTime() - new Date(b.generationtime).getTime());
-
-  /*
-    const selectedDate = filteredImages.length > 0
-    ? new Date(filteredImages[index].generationtime)
-    : null;
-*/
 
   const selectedDate = filteredImages.length > 0
     ? new Date(filteredImages[Math.min(index, filteredImages.length - 1)].generationtime)
@@ -150,14 +151,35 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [filteredImages.length]);
 
-  const handleTouchStart = (e: React.TouchEvent) => setTouchStartX(e.touches[0].clientX);
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const diff = touchStartX - e.changedTouches[0].clientX;
-    if (diff > 50) next();
-    if (diff < -50) prev();
-  };
+  // ── Swipe-käsittely natiiveilla listenereillä (passive: false estää selaimen back/forward gesturet) ──
+  useEffect(() => {
+    const el = imageBoxRef.current;
+    if (!el) return;
 
-  useEffect(() => { setImgLoaded(false); }, [index]);
+    let startX = 0;
+
+    const onTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+      setTouchStartX(startX);
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      const diff = startX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) {
+        e.preventDefault(); // estää selaimen back/forward navigation gesturet
+        if (diff > 0) next();
+        else prev();
+      }
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchend', onTouchEnd, { passive: false });
+
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [filteredImages.length]);
 
   const handleDateChange = (date: Date | null) => {
     if (!date) return;
@@ -171,6 +193,40 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     setExpanded(prev => prev === id ? '' : id);
   };
 
+  const safeIndex = Math.min(index, Math.max(0, filteredImages.length - 1));
+  const current = filteredImages[safeIndex];
+  const dataUrl = current?.image?.image.dataUrl;
+
+  // ── Esilataus: lataa uusi kuva taustalla, vaihda displayUrl vasta onLoad ──
+  useEffect(() => {
+    if (!dataUrl) return;
+
+    if (isFirstLoad) {
+      // Ensimmäinen kuva: näytä skeleton kunnes ladattu
+      const img = new Image();
+      img.onload = () => {
+        setDisplayUrl(dataUrl);
+        setIsFirstLoad(false);
+      };
+      img.src = dataUrl;
+      preloadRef.current = img;
+      return;
+    }
+
+    // Seuraavat kuvat: lataa taustalla, älä poista edellistä
+    const img = new Image();
+    img.onload = () => {
+      setDisplayUrl(dataUrl);
+    };
+    img.src = dataUrl;
+    preloadRef.current = img;
+
+    return () => {
+      // Peruuta kesken oleva lataus vaihtamalla src tyhjäksi
+      img.src = '';
+    };
+  }, [dataUrl]);
+
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
       <CircularProgress />
@@ -179,20 +235,12 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!filteredImages.length) return <Alert severity="info">{t('noImages')}</Alert>;
 
-  //const current = filteredImages[index];
-  //const imageDate = current.generationtime;
-
-
-  const safeIndex = Math.min(index, Math.max(0, filteredImages.length - 1));
-  const current = filteredImages[safeIndex];
   if (!current) return null;
   const imageDate = current.generationtime;
 
   const isFirst = index === 0;
   const isLast = index === filteredImages.length - 1;
-  const dataUrl = current.image?.image.dataUrl;
   const currentWeather = weatherData.find(w => w.sentinelid === current.sentinelid);
-
 
   // ── NDVI-kuvaviewer ───────────────────────────────────────────────────────
   const imageViewer = (
@@ -233,8 +281,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
 
       {/* Kuva-alue */}
       <Box
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+        ref={imageBoxRef}
         sx={{
           flex: 1, position: 'relative',
           bgcolor: 'background.default',
@@ -242,27 +289,33 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           overflow: 'hidden',
           minHeight: { xs: 260, md: 0 },
           userSelect: 'none',
+          overscrollBehaviorX: 'none',
+          touchAction: 'pan-y',
         }}
       >
-        {!imgLoaded && (
-          <Skeleton variant="rectangular" sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} />
+        {/* Skeleton vain ensimmäisellä latauksella */}
+        {isFirstLoad && (
+          <Skeleton
+            variant="rectangular"
+            sx={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+          />
         )}
-        {dataUrl && (
+
+        {/* Näkyvä kuva — pysyy vanhana kunnes uusi on ladattu taustalla */}
+        {displayUrl && (
           <Box
             component="img"
-            src={dataUrl}
+            src={displayUrl}
             alt={`NDVI ${fmt(imageDate)}`}
-            onLoad={() => setImgLoaded(true)}
             sx={{
               width: '100%', height: '100%',
               objectFit: 'contain',
-              opacity: imgLoaded ? 1 : 0,
-              transition: 'opacity 0.3s',
               pointerEvents: 'none',
               filter: 'blur(1px)',
             }}
           />
         )}
+
         <Chip
           label={fmt(imageDate)}
           size="small"

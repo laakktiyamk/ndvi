@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { FieldParcel } from "../mongo/models/FieldParcel";
+import { getFieldByLocation } from "../services/fieldParcelService";
 
 export const fieldByLocation = async (req: Request, res: Response): Promise<void> => {
   const { lat, lon } = req.query;
@@ -17,15 +17,7 @@ export const fieldByLocation = async (req: Request, res: Response): Promise<void
     return;
   }
 
-  // GeoJSON järjestys: [longitude, latitude]
-  const point = {
-    type: "Point",
-    coordinates: [lonNum, latNum],
-  };
-
-  const field = await FieldParcel.findOne({
-    geometry: { $geoIntersects: { $geometry: point } },
-  }).lean();
+  const field = await getFieldByLocation(latNum, lonNum);
 
   if (!field) {
     res.status(404).json({ error: "Ei peltolohkoa annetuissa koordinaateissa" });

@@ -124,6 +124,8 @@ Content-Type: application/json
 GET http://localhost:8000/api/geocode?text=Tampere
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3NmFiZWM2ZGMzOGIyZmU3YzUiLCJ1c2VybmFtZSI6InRpbW8iLCJpYXQiOjE3ODcxNTgxODIsImV4cCI6MTc4NzE2MTc4Mn0.2CGvEkfdtGG_E71jeNVMVovLrgDogwFWrW8lwUgvEUQ
 
+
+
 ### FieldParcels to local mongoDb 
 
   POST http://localhost:8000/dev/import-FieldParcels
@@ -134,9 +136,12 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YTgzN2Q3N
   POST http://localhost:8000/dev/import-CropParcels
 
 
+### Import CropTypes
+POST http://localhost:8000/dev/import-CropTypes
+Content-Type: application/json
 
 
-  ### fields.http
+### fields.http
 
 @baseUrl = http://localhost:8000/api
 

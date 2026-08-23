@@ -6,6 +6,7 @@ import path from "path";
 const JSONStream = require("JSONStream");
 import { FieldParcel } from "../mongo/models/FieldParcel";
 import { CropParcel } from "../mongo/models/CropParcel";
+import { CropType } from "../mongo/models/CropType";
 
 const router = Router();
 
@@ -116,5 +117,28 @@ router.post("/import-CropParcels", async (req: Request, res: Response) => {
   console.log("ElapsedTime (sec): ", (performance.now() - startTime) / 1000);
   res.json({ inserted });
 });
+
+
+router.post("/import-CropTypes", async (req: Request, res: Response) => {
+
+  const filePath = process.env.KASVILAJIT_FILE_PATH || "D:\\Peltolohkot_kasvulohkot\\kasvilajit.json";
+  const docs = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+
+  const docsWithColor = docs.map((doc: any) => ({
+    ...doc,
+    color: doc.color ?? generateCropColor(doc.kasvikoodi),
+  }));
+
+  await CropType.insertMany(docsWithColor, { ordered: false });
+  res.json({ inserted: docsWithColor.length });
+});
+
+function generateCropColor(kasvikoodi: string): string {
+  let hash = 0;
+  for (const char of kasvikoodi) {
+    hash = char.charCodeAt(0) + ((hash << 5) - hash);
+  }
+  return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
+}
 
 export default router;
