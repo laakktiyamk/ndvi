@@ -57,15 +57,18 @@ const VARIABLE_LABEL_KEYS: Record<VarKey, string> = {
   wind_speed_10m_mean: 'maxWind',
 };
 
-const fmtShort = (iso: string) => {
+const fmtShort = (iso: string, lang = 'fi') => {
   const d = new Date(iso);
-  return `${d.getDate()}.${d.getMonth() + 1}.`;
+  return d.toLocaleDateString(lang === 'fi' ? 'fi-FI' : 'en-GB', {
+    day: 'numeric',
+    month: 'numeric',
+  });
 };
 
 const getYear = (iso: string) => new Date(iso).getFullYear();
 
 export default function WeatherPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { fields, activeGeometryHash, weatherData, weatherLoading, weatherError } = useAppStore();
   const activeField = fields.find(f => f.id === activeGeometryHash);
 
@@ -83,11 +86,11 @@ export default function WeatherPage() {
       .filter(w => getYear(w.date) === selectedYear)
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map(w => ({
-        label: fmtShort(w.date),
+        label: fmtShort(w.date, i18n.language),
         date: w.date,
         value: w[selectedVar] != null ? Math.round((w[selectedVar] as number) * 10) / 10 : null,
       }));
-  }, [weatherData, selectedYear, selectedVar]);
+  }, [weatherData, selectedYear, selectedVar, i18n.language]);
 
   const varUnit = VARIABLE_UNITS[selectedVar];
   const varColor = VARIABLE_COLORS[selectedVar];
@@ -160,7 +163,7 @@ export default function WeatherPage() {
 
           {chartData.length === 0 ? (
             <Typography color="text.secondary" variant="body2">
-              Ei dataa vuodelle {selectedYear}.
+              {t('noDataForYear', { year: selectedYear })}
             </Typography>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
@@ -168,7 +171,25 @@ export default function WeatherPage() {
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 10 }} width={48} tickFormatter={v => `${v}${varUnit}`} />
-                <Tooltip formatter={(v) => [`${v} ${varUnit}`, varLabel]} labelFormatter={l => l} />
+                <Tooltip
+                  contentStyle={{
+                    fontSize: '0.75rem',
+                    padding: '4px 8px',
+                    lineHeight: 1.4,
+                  }}
+                  labelStyle={{
+                    color: '#000',
+                    fontWeight: 600,
+                    marginBottom: 2,
+                  }}
+                  formatter={(v) => [`${v} ${varUnit}`, varLabel]}
+                  labelFormatter={(label, payload) => {
+                    const date = payload?.[0]?.payload?.date;
+                    return date
+                      ? new Date(date).toLocaleDateString(i18n.language === 'fi' ? 'fi-FI' : 'en-GB')
+                      : label;
+                  }}
+                />
                 {avg != null && (
                   <ReferenceLine
                     y={avg}

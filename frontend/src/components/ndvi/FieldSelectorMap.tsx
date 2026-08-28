@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent,
   Button, TextField, Box, Typography, CircularProgress, Alert,
   Chip, Stack,
 } from '@mui/material';
@@ -296,8 +296,7 @@ export default function FieldSelectorMap({ open, onClose, onSelect }: Props) {
             </Stack>
           )}
         </Box>
-      </DialogContent>
-      {/* DialogActions poistettu — napit siirretty ylös */}
+      </DialogContent>      
 
     </Dialog>
   );

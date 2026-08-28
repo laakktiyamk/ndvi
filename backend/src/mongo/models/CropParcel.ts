@@ -2,11 +2,12 @@ import { Schema } from "mongoose";
 import { localConnection } from "../connections";
 
 const CropParcelSchema = new Schema({
-  tunnus:                { type: String, index: true },
-  peruslohkotunnus:      { type: String, index: true },  // linkki peltolohkoon
+  tunnus:                { type: String },
+  peruslohkotunnus:      { type: String },
   lohkonumero:           { type: String },
+  vuosi:                 { type: String },
   pinta_ala:             { type: Number },
-  kasvikoodi:            { type: String, index: true },
+  kasvikoodi:            { type: String },
   kasvikoodi_selite_fi:  { type: String },
   luomuviljely:          { type: String },
   geometry: {
@@ -17,8 +18,9 @@ const CropParcelSchema = new Schema({
   collection: "cropParcels",
 });
 
+CropParcelSchema.index({ peruslohkotunnus: 1, lohkonumero: 1, vuosi: 1 }, { unique: true });
+CropParcelSchema.index({ kasvikoodi: 1 });
 CropParcelSchema.index({ geometry: "2dsphere" });
-CropParcelSchema.index({ peruslohkotunnus: 1, kasvikoodi: 1 });
 
 const CropParcelModel = localConnection.model("CropParcel", CropParcelSchema);
 export { CropParcelModel as CropParcel };

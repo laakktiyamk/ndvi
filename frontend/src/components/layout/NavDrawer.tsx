@@ -1,15 +1,17 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Drawer, List, ListItem, ListItemButton,
-  ListItemIcon, ListItemText, Box, Typography, Tooltip,
+  ListItemIcon, ListItemText, Box, Typography, Tooltip, Divider,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import LayersIcon from '@mui/icons-material/Layers';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutlined';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
+import NewFieldDialog from './NewFieldDialog';
 
 const DRAWER_WIDTH = 240;
 
@@ -23,7 +25,6 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { labelKey: 'dashboard', icon: <DashboardIcon />, path: '/' },
   { labelKey: 'fields',    icon: <LayersIcon />,    path: '/fields' },
-  { labelKey: 'geojson',   icon: <UploadFileIcon />, path: '/geojson' },
   { labelKey: 'weather',   icon: <WbSunnyIcon />,   path: '/weather',  requiresField: true },
   { labelKey: 'analysis',  icon: <BarChartIcon />,  path: '/analysis', requiresField: true },
 ];
@@ -45,24 +46,51 @@ export default function NavDrawer({ open, onClose, isMobile, navOpen, onNavOpen 
   const { selectedFieldId, activeGeometryHash } = useAppStore();
   const hasField = !!(selectedFieldId || activeGeometryHash);
 
+  const [newFieldOpen, setNewFieldOpen] = useState(false);
+
   const handleNavClick = (path: string) => {
-    // Kun navigoidaan /fields-sivulle, välitetään state joka avaa listan
     if (path === '/fields') {
       navigate(path, { state: { openList: true } });
     } else {
       navigate(path);
     }
-    if (isMobile) {
-      onClose();
-    } else {
-      onNavOpen();
-    }
+    if (isMobile) onClose();
+    else onNavOpen();
+  };
+
+  const handleNewField = () => {
+    setNewFieldOpen(true);
+    if (isMobile) onClose();
   };
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Box sx={{ height: 64 }} /> {/* AppBar offset */}
       <List sx={{ flexGrow: 1, pt: 1 }}>
+
+        {/* Uusi pelto -nappi — aina ensimmäisenä, ei disabled */}
+        <ListItem disablePadding>
+          <ListItemButton
+            onClick={handleNewField}
+            sx={{
+              borderRadius: 1, mx: 1,
+              color: 'primary.main',
+              '& .MuiListItemIcon-root': { color: 'primary.main' },
+            }}
+          >
+            <ListItemIcon sx={{ minWidth: 40 }}>
+              <AddCircleOutlineIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary={t('newField') || 'Uusi pelto'}
+              primaryTypographyProps={{ fontWeight: 600 }}
+            />
+          </ListItemButton>
+        </ListItem>
+
+        <Divider sx={{ my: 0.5, mx: 2 }} />
+
+        {/* Muut navigointilinkit */}
         {NAV_ITEMS.map((item) => {
           const disabled = item.requiresField && !hasField;
           const selected = location.pathname === item.path ||
@@ -89,9 +117,13 @@ export default function NavDrawer({ open, onClose, isMobile, navOpen, onNavOpen 
           ) : button;
         })}
       </List>
+
       <Box sx={{ p: 2, pb: 3 }}>
         <Typography variant="caption" color="text.secondary">NDVI Monitor v0.1</Typography>
       </Box>
+
+      {/* NewFieldDialog renderöidään drawerin sisällä jotta pysyy oikein mobiililla */}
+      <NewFieldDialog open={newFieldOpen} onClose={() => setNewFieldOpen(false)} />
     </Box>
   );
 

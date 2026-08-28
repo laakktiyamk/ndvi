@@ -1,3 +1,13 @@
+// ─── CropParcel ──────────────────────────────────────
+export interface ICropParcel {
+  tunnus: string;
+  lohkonumero: string;
+  kasvikoodi: string;
+  kasvikoodi_selite_fi: string;
+  pinta_ala: number;
+  luomuviljely: string;
+}
+
 // ─── Field ───────────────────────────────────────────
 export interface IField {
   _id: string;
@@ -8,6 +18,7 @@ export interface IField {
     type: 'Polygon' | 'MultiPolygon';
     coordinates: unknown[];
   };
+  kasvulohkot?: ICropParcel[];  // ← lisäys
 }
 
 // ─── NDVI ────────────────────────────────────────────
@@ -79,6 +90,5 @@ export interface IWeather {
   et0_fao_evapotranspiration: number | null;
   createdAt: string;
 }
-
 
 export type Lang = 'fi' | 'en';

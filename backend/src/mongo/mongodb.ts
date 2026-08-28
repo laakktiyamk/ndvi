@@ -73,31 +73,31 @@ export const login = async (email: string): Promise<IUser | null> => {
 /**
  * saveDates — lisätty userId $addToSet:lla (ei duplikaatteja)
  */
+// ── Korvaa mongodb.ts:ssä saveDates-funktio tällä ──────────────────────────
+
 export const saveDates = async (
   id: string,
   data: any[],
   geometry: any,
   area: number,
   name: string = '',
-  userId: string = ''
+  userId: string = '',
+  kasvulohkot: any[] = []   // ← lisäys
 ): Promise<boolean> => {
   try {
-
     console.log("saveDates called with id:", id, "userId:", userId);
-    const update: any = {
-      $set: { id, dates: data, geometry, area, name },
-    };
 
+    const setFields: any = { id, dates: data, geometry, area, name };
+    if (kasvulohkot.length > 0) {
+      setFields.kasvulohkot = kasvulohkot;  // ← tallennetaan vain jos annettu
+    }
+
+    const update: any = { $set: setFields };
     if (userId) {
       update.$addToSet = { userIds: userId };
     }
 
-    await Dates.findOneAndUpdate(
-      { id },
-      update,
-      { upsert: true }
-    );
-
+    await Dates.findOneAndUpdate({ id }, update, { upsert: true });
     return true;
   } catch (err: any) {
     console.error("Error saving dates:", err.message);

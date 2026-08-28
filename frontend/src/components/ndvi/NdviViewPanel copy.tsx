@@ -8,8 +8,6 @@ import NdviTimelineChart from './NdviTimelineChart';
 import StatisticsTab from './tabs/StatisticsTab';
 import OnMapTab from './tabs/OnMapTab';
 import LocationTab from './tabs/LocationTab';
-import { NdviFilmroll } from './NdviFilmroll';            // ← uusi
-import type { NdviImageEntry } from './ndviFilmrollUtils'; // ← uusi
 
 interface Props {
   fieldId: string;
@@ -21,7 +19,7 @@ interface Props {
   onSelect: (index: number) => void;
 }
 
-type TabKey = 'chart' | 'filmroll' | 'statistics' | 'onmap' | 'location'; // ← 'filmroll' lisätty
+type TabKey = 'chart' | 'statistics' | 'onmap' | 'location';
 
 const fmt = (date: string) =>
   new Date(date).toLocaleDateString('fi-FI', {
@@ -29,19 +27,6 @@ const fmt = (date: string) =>
     month: 'numeric',
     year: 'numeric',
   });
-
-// Muuntaa MergedNdviEntry[] → NdviImageEntry[].
-// Säädä kenttänimet jos MergedNdviEntry:ssä on eri nimet.
-function toFilmrollEntries(entries: MergedNdviEntry[]): NdviImageEntry[] {
-  return entries.map((e) => ({
-    date: e.generationtime,
-    imageUrl: e.image?.url ?? '',
-    ndviMean: e.stats.average,
-    ndviMin: e.stats.min,
-    ndviMax: e.stats.max,
-    cloudCoverPct: 0, // ei saatavilla MergedNdviEntry:ssä
-  }));
-}
 
 export default function NdviViewPanel({
   fieldId,
@@ -95,7 +80,6 @@ export default function NdviViewPanel({
         }}
       >
         <Tab label={t('chart')}      value="chart"      />
-        <Tab label={t('filmroll', 'Filmroll')} value="filmroll" /> {/* ← uusi */}
         <Tab label={t('statistics')} value="statistics" />
         <Tab label={t('onMap')}      value="onmap"      />
         <Tab label={t('location')}   value="location"   />
@@ -109,20 +93,6 @@ export default function NdviViewPanel({
             onSelect={onSelect}
             chartHeight={220}
           />
-        )}
-
-        {tab === 'filmroll' && (                          /* ← uusi blokki */
-          <Box sx={{ flex: 1, overflowY: 'auto', p: { xs: 1, sm: 1.5 } }}>
-            <NdviFilmroll
-              entries={toFilmrollEntries(entries)}
-              frameHeight={110}
-              onSelect={(filmEntry) => {
-                // Synkronoi valittu päivä muiden tabien kanssa
-                const idx = entries.findIndex(e => e.date === filmEntry.date);
-                if (idx !== -1) onSelect(idx);
-              }}
-            />
-          </Box>
         )}
 
         {tab === 'statistics' && (

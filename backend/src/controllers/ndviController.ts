@@ -162,6 +162,8 @@ const getImageWithData = async (item: SentinelDate, geometry: any, authToken: st
   return null;
 };
 
+// ── saveSentinelDataToMongo — lisää kasvulohkot-parametri ─────────────────
+
 const saveSentinelDataToMongo = async (
   save: boolean,
   geometry: any,
@@ -169,7 +171,8 @@ const saveSentinelDataToMongo = async (
   toTime: Date,
   authToken: string,
   name: string = '',
-  userId: string = ''
+  userId: string = '',
+  kasvulohkot: any[] = []   // ← lisäys
 ): Promise<boolean> => {
   const id   = hash.sha256(geometry);
   const area = geoUtils.getAreaFromGeometry(geometry);
@@ -179,13 +182,15 @@ const saveSentinelDataToMongo = async (
 
   try {
     if (save) {
-      res = await mongodb.saveDates(id, savedDates, geometry, area ?? 0, name, userId);
+      // kasvulohkot mukaan saveDates-kutsuun
+      res = await mongodb.saveDates(id, savedDates, geometry, area ?? 0, name, userId, kasvulohkot);
     }
 
+    // ... muu koodi pysyy samana ...
     const startTime = performance.now();
-    const dates = await getSentinelDates(geometry, fromTime, toTime,authToken);
+    const dates = await getSentinelDates(geometry, fromTime, toTime, authToken);
     console.log(dates.length, " STATISTICS ElapsedTime (sec): ", (performance.now() - startTime) / 1000);
-    
+
     if (dates.length > 0) {
       const startTime = performance.now();
       const limit = createLimit(5);
@@ -193,7 +198,7 @@ const saveSentinelDataToMongo = async (
       await Promise.all(
         dates.map(item =>
           limit(async () => {
-            const _data = await getImageWithData(item, geometry,authToken);
+            const _data = await getImageWithData(item, geometry, authToken);
             if (_data) await mongodb.saveImage(_data);
           })
         )
@@ -213,6 +218,9 @@ const saveSentinelDataToMongo = async (
   }
 };
 
+
+// ── getDates — lisää kasvulohkot-parametri ────────────────────────────────
+
 async function getDates(
   returnData: boolean,
   geometry: any,
@@ -220,22 +228,27 @@ async function getDates(
   toTime: Date,
   authToken: string,
   name: string = '',
-  userId: string = ''
+  userId: string = '',
+  kasvulohkot: any[] = []   // ← lisäys
 ): Promise<any> {
   const id = hash.sha256(geometry);
   let data = await mongodb.getDates(id);
 
   if (!data || !data.dates || data.dates.length === 0) {
-    await saveSentinelDataToMongo(true, geometry, fromTime, toTime, authToken, name, userId);
+    await saveSentinelDataToMongo(true, geometry, fromTime, toTime, authToken, name, userId, kasvulohkot);
   } else {
     if (isDateInGrowingSeason(toTime, growingSeason)) {
       if (data.dates[0].generationtime < dateTime.zeroDateTime(toTime)) {
         const newFromTime = new Date(dateTime.addOneDay(data.dates[0].generationtime));
-        await saveSentinelDataToMongo(false, geometry, newFromTime, toTime, name, userId);
+        await saveSentinelDataToMongo(false, geometry, newFromTime, toTime, authToken, name, userId);
+        // ↑ päivityksessä kasvulohkot ei tarvitse — ne on jo tallennettu
       }
     }
 
-    if ((name && !data.name) || (userId && !data.userIds?.includes(userId))) {
+    // Jos kasvulohkot annettu ja niitä ei vielä ole, päivitetään
+    if (kasvulohkot.length > 0 && (!data.kasvulohkot || data.kasvulohkot.length === 0)) {
+      await mongodb.saveDates(id, data.dates, geometry, data.area ?? 0, name || data.name, userId, kasvulohkot);
+    } else if ((name && !data.name) || (userId && !data.userIds?.includes(userId))) {
       await mongodb.saveDates(id, data.dates, geometry, data.area ?? 0, name || data.name, userId);
     }
   }
@@ -246,17 +259,10 @@ async function getDates(
   return null;
 }
 
-// ============================================================
-// Route handlers
-// ============================================================
 
-export const AOIs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const data: any = await mongodb.getBlocks();
-  res.status(200).send(data);
-};
+// ── dates route handler — luetaan kasvulohkot req.body:stä ───────────────
 
 export const dates = async (req: SentinelRequest, res: Response, next: NextFunction): Promise<void> => {
-  //globalAuthToken = req.authToken;
   const authToken = req.authToken ?? '';
   const startTime = performance.now();
 
@@ -268,12 +274,13 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
     geometry = rewind(raw, { mutate: false });
   } catch (e) { }
 
-  const fromTime = new Date(req.body.start_date);
-  const toTime   = new Date();
-  const name     = req.body.name ?? '';
-  const userId   = getUserId(req);
+  const fromTime    = new Date(req.body.start_date);
+  const toTime      = new Date();
+  const name        = req.body.name ?? '';
+  const userId      = getUserId(req);
+  const kasvulohkot = req.body.kasvulohkot ?? [];  // ← lisäys
 
-  const data = await getDates(true, geometry, fromTime, toTime, authToken, name, userId);
+  const data = await getDates(true, geometry, fromTime, toTime, authToken, name, userId, kasvulohkot);
   console.log("Request handled in (sec): ", (performance.now() - startTime) / 1000);
 
   const wStart = performance.now();

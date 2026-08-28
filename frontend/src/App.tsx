@@ -11,7 +11,6 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import FieldsPage from './pages/FieldsPage';
-import GeoJsonPage from './pages/GeoJsonPage';
 import WeatherPage from './pages/WeatherPage';
 import AnalysisPage from './pages/AnalysisPage';
 
@@ -51,7 +50,6 @@ export default function App() {
               }>
                 <Route index element={<DashboardPage />} />
                 <Route path="fields" element={<FieldsPage />} />
-                <Route path="geojson" element={<GeoJsonPage />} />
                 <Route path="weather" element={<WeatherPage />} />
                 <Route path="analysis" element={<AnalysisPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

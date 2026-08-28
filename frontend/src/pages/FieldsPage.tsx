@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import {
@@ -20,7 +20,6 @@ const today = new Date().toISOString().split('T')[0];
 export default function FieldsPage() {
   const { t } = useTranslation();
   const location = useLocation();
-  const fromGeoJson = location.state?.fromGeoJson as boolean | undefined;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -28,19 +27,45 @@ export default function FieldsPage() {
     fields,
     fieldsLoading: loading,
     fieldsError: error,
-    fieldsFetched: fetched,
+    fieldsFetched,
     fetchFields,
     selectedFieldId,
     setSelectedField,
     fetchImagesForField,
     startDate,
+    newFieldAdded,
+    setNewFieldAdded,
   } = useAppStore();
 
   const [listOpen, setListOpen] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [showNewFieldBanner, setShowNewFieldBanner] = useState(false);
 
-  useEffect(() => { fetchFields(); }, [fetchFields]);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  // Hae fields kun fieldsFetched resetoituu false:ksi
+  useEffect(() => {
+    if (!fieldsFetched) fetchFields();
+  }, [fieldsFetched, fetchFields]);
+
+  // Banner store-staten kautta
+  useEffect(() => {
+    if (!newFieldAdded) return;
+    setShowNewFieldBanner(true);
+    const timer = setTimeout(() => {
+      setShowNewFieldBanner(false);
+      setNewFieldAdded(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [newFieldAdded, setNewFieldAdded]);
+
+  // Scrollaa valittuun kenttään kun selectedFieldId tai fields muuttuu
+  useEffect(() => {
+    if (!selectedFieldId || !listRef.current) return;
+    const el = listRef.current.querySelector(`[data-id="${selectedFieldId}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [selectedFieldId, fields]);
 
   // Kun nav-drawer klikkaa "Fields" uudelleen, state.openList avaa listan
   useEffect(() => {
@@ -50,9 +75,7 @@ export default function FieldsPage() {
   }, [location.state]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300);
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
   }, [search]);
 
@@ -95,7 +118,7 @@ export default function FieldsPage() {
               <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <GrassIcon color="primary" fontSize="small" />
                 <Typography sx={{ fontWeight: 700 }}>{t('fields')}</Typography>
-                {fetched && (
+                {fieldsFetched && (
                   <Chip label={fields.length} size="small" color="primary" variant="outlined" sx={{ ml: 'auto' }} />
                 )}
               </Box>
@@ -119,13 +142,18 @@ export default function FieldsPage() {
                   }}
                 />
               </Box>
-              {fromGeoJson && (
+
+              {showNewFieldBanner && (
                 <Alert severity="success" sx={{ m: 1, py: 0.5 }}>
-                  Uusi lohko lisätty
+                  {t('newFieldAdded') || 'Uusi lohko lisätty'}
                 </Alert>
               )}
 
-              {loading && <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>}
+              {loading && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              )}
               {error && <Alert severity="error" sx={{ m: 1 }}>{error}</Alert>}
               {!loading && !error && fields.length === 0 && (
                 <Typography color="text.secondary" sx={{ p: 2 }} variant="body2">
@@ -133,10 +161,11 @@ export default function FieldsPage() {
                 </Typography>
               )}
 
-              <List disablePadding sx={{ overflow: 'auto', flex: 1 }}>
+              <List ref={listRef} disablePadding sx={{ overflow: 'auto', flex: 1 }}>
                 {filteredFields.map((field, i) => (
                   <ListItem key={field.id} disablePadding divider={i < filteredFields.length - 1}>
                     <ListItemText
+                      data-id={field.id}
                       primary={field.name}
                       secondary={field.area ? `${(field.area / 10000).toFixed(2)} ha` : undefined}
                       sx={{

@@ -9,9 +9,12 @@ export const atlasConnection = mongoose.createConnection(
   process.env.MONGO_URI!
 );*/
 
+//console.log('Yhdistetään osoitteeseen:', process.env.MONGO_AZURE_URI);
+
 // Local — peltolohkot
 export const localConnection = mongoose.createConnection(
-  process.env.MONGO_LOCAL_URI!  // mongodb://localhost:27017/ndvi
+  //process.env.MONGO_LOCAL_URI!  // mongodb://localhost:27017/ndvi
+  process.env.MONGO_AZURE_URI!
 );
 
 //atlasConnection.on("connected", () => console.log("Atlas: yhdistetty"));

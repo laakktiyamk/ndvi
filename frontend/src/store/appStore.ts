@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { IField, IWeather, MergedNdviEntry } from '../types';
+import type { IField, IWeather, MergedNdviEntry, ICropParcel } from '../types';
 import { getFields } from '../services/fieldService';
 import { getDatesForGeometry, fetchImagesByIds } from '../services/ndviService';
 import { getWeatherForGeometry } from '../services/weatherService';
@@ -30,6 +30,9 @@ interface AppState {
   validGeoJson: object | null;
   startDate: string;
 
+  // ── UI-tila ──────────────────────────────────────
+  newFieldAdded: boolean;
+
   // ── Actionit ─────────────────────────────────────
   fetchFields: () => Promise<void>;
   setSelectedField: (id: string | null) => void;
@@ -42,11 +45,13 @@ interface AppState {
     geometry: object,
     startDate: string,
     endDate: string,
-    name?: string
+    name?: string,
+    cropParcels?: ICropParcel[]  // ← lisäys
   ) => Promise<string | null>;
   setGeoJsonInput: (text: string) => void;
   setValidGeoJson: (gj: object | null) => void;
   setStartDate: (d: string) => void;
+  setNewFieldAdded: (v: boolean) => void;
   resetFields: () => void;
 }
 
@@ -70,6 +75,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   geoJsonInput: '',
   validGeoJson: null,
   startDate: '2025-04-01',
+
+  newFieldAdded: false,
 
   fetchFields: async () => {
     if (get().fieldsFetched) return;
@@ -118,7 +125,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         imagesLoading: false,
       });
 
-      // Hae säätiedot taustalla
       set({ weatherLoading: true, weatherError: null });
       getWeatherForGeometry(field.id)
         .then((data) => set({ weatherData: data, weatherLoading: false }))
@@ -135,11 +141,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  fetchImagesForGeometry: async (geometry, startDate, endDate, name) => {
+  fetchImagesForGeometry: async (geometry, startDate, endDate, name, cropParcels) => {
     if (get().imagesLoading) return null;
     set({ imagesLoading: true, imagesError: null });
     try {
-      const datesRes = await getDatesForGeometry(geometry, startDate, endDate, name);
+      const datesRes = await getDatesForGeometry(
+        geometry, startDate, endDate, name, cropParcels  // ← välitetään servicelle
+      );
       const ids = datesRes.dates.map((d) => d.sentinelid);
 
       const imagesRes = await fetchImagesByIds(ids);
@@ -150,7 +158,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         generationtime: d.generationtime,
         stats: d.stats,
         image: imagesById[d.sentinelid],
-        name: name,
+        name,
       }));
 
       set({
@@ -160,7 +168,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         fieldsFetched: false,
       });
 
-      // Hae säätiedot taustalla
       set({ weatherLoading: true, weatherError: null });
       getWeatherForGeometry(datesRes.id)
         .then((data) => set({ weatherData: data, weatherLoading: false }))
@@ -182,6 +189,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setGeoJsonInput: (text) => set({ geoJsonInput: text }),
   setValidGeoJson: (gj) => set({ validGeoJson: gj }),
   setStartDate: (d) => set({ startDate: d }),
+  setNewFieldAdded: (v) => set({ newFieldAdded: v }),
 
   resetFields: () =>
     set({
@@ -197,5 +205,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       weatherData: [],
       weatherLoading: false,
       weatherError: null,
+      newFieldAdded: false,
     }),
 }));
