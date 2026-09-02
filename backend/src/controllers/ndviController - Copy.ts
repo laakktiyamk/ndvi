@@ -5,7 +5,7 @@ import * as hash from "../utils/hash";
 const geoUtils = require("../utils/geoUtils");
 import { getStatistics } from "../sentinelhub/getStatistics_CDSE";
 //import * as imageRef from "../sentinelhub/getImage";
-import { getImage } from "../sentinelhub/getImage_CDSE";
+import {getImage} from "../sentinelhub/getImage_CDSE";
 import * as imageDataRef from "../utils/image/getImageData";
 import * as dateTime from "../utils/dateTime";
 import * as mongodb from "../mongo/mongodb";
@@ -174,7 +174,7 @@ const saveSentinelDataToMongo = async (
   userId: string = '',
   kasvulohkot: any[] = []   // ← lisäys
 ): Promise<boolean> => {
-  const id = hash.sha256(geometry);
+  const id   = hash.sha256(geometry);
   const area = geoUtils.getAreaFromGeometry(geometry);
   type SentinelDatesWithoutPercentages = Omit<SentinelDate, "ndviClassPercentages">;
   let savedDates: SentinelDatesWithoutPercentages[] = [];
@@ -238,18 +238,11 @@ async function getDates(
     await saveSentinelDataToMongo(true, geometry, fromTime, toTime, authToken, name, userId, kasvulohkot);
   } else {
     if (isDateInGrowingSeason(toTime, growingSeason)) {
-      // Hae uudempaa dataa eteenpäin
       if (data.dates[0].generationtime < dateTime.zeroDateTime(toTime)) {
         const newFromTime = new Date(dateTime.addOneDay(data.dates[0].generationtime));
         await saveSentinelDataToMongo(false, geometry, newFromTime, toTime, authToken, name, userId);
+        // ↑ päivityksessä kasvulohkot ei tarvitse — ne on jo tallennettu
       }
-    }
-
-    // ← UUSI: hae vanhempaa dataa taaksepäin jos fromTime on ennen vanhinta tallennettua
-    const oldestDate = data.dates[data.dates.length - 1]?.generationtime;
-    if (fromTime && oldestDate && new Date(fromTime) < new Date(oldestDate)) {
-      const backfillToTime = new Date(oldestDate); // haetaan vanhin tallennettu asti
-      await saveSentinelDataToMongo(false, geometry, fromTime, backfillToTime, authToken, name, userId);
     }
 
     // Jos kasvulohkot annettu ja niitä ei vielä ole, päivitetään
@@ -281,10 +274,10 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
     geometry = rewind(raw, { mutate: false });
   } catch (e) { }
 
-  const fromTime = new Date(req.body.start_date);
-  const toTime = new Date();
-  const name = req.body.name ?? '';
-  const userId = getUserId(req);
+  const fromTime    = new Date(req.body.start_date);
+  const toTime      = new Date();
+  const name        = req.body.name ?? '';
+  const userId      = getUserId(req);
   const kasvulohkot = req.body.kasvulohkot ?? [];  // ← lisäys
 
   const data = await getDates(true, geometry, fromTime, toTime, authToken, name, userId, kasvulohkot);
@@ -315,7 +308,7 @@ interface ProcessedImageData extends Omit<RawImageData, 'dataUrl'> {
 }
 
 export const image = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  const id = req.params.sentinelid;
+  const id  = req.params.sentinelid;
   const all = req.query.all as string | undefined;
 
   if (all) {

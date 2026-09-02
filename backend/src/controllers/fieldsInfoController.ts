@@ -139,3 +139,44 @@ export const getFields = async (
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// DELETE /api/fields/:id
+export const deleteField = async (
+  req: Request,
+  res: Response,
+  next?: NextFunction
+): Promise<void> => {
+
+  try {
+    const userId = getUserId(req);
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const id = req.params.id as string;
+
+    // Tarkistetaan että pelto kuuluu käyttäjälle
+    const data = await mongodb.getDates(id);
+    if (!data) {
+      res.status(404).json({ error: 'Field not found' });
+      return;
+    }
+    if (!data.userIds?.includes(userId)) {
+      res.status(403).json({ error: 'Forbidden' });
+      return;
+    }
+
+    // Poistetaan Dates-dokumentti, Images ja Weather
+    await Promise.all([
+      mongodb.deleteDates(id),
+      mongodb.deleteImagesByHash(id),
+      mongodb.deleteWeatherByHash(id),
+    ]);
+
+    res.status(200).json({ ok: true });
+  } catch (err: unknown) {
+    console.error('deleteField error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

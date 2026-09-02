@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Box, Typography, Grid, CircularProgress,
+  Box, Typography, Grid, CircularProgress, useTheme,
 } from '@mui/material';
 import ThermostatIcon from '@mui/icons-material/Thermostat';
 import WaterDropIcon from '@mui/icons-material/WaterDrop';
@@ -22,9 +23,11 @@ interface WeatherSummaryPanelProps {
   year?: number;
 }
 
-const fmtShort = (iso: string) => {
+const fmtShort = (iso: string, lang = 'fi'): string => {
   const d = new Date(iso);
-  return `${d.getDate()}.${d.getMonth() + 1}.`;
+  return lang === 'fi'
+    ? `${d.getDate()}.${d.getMonth() + 1}.`
+    : `${d.getMonth() + 1}/${d.getDate()}`;
 };
 
 const calcGDD = (tMax: number | null, tMin: number | null): number => {
@@ -37,9 +40,18 @@ export default function WeatherSummaryPanel({
   weatherLoading,
   year = new Date().getFullYear(),
 }: WeatherSummaryPanelProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const theme = useTheme();
 
-  const seasonStart = new Date(year, 4, 1); // 1.5.
+  const [lang, setLang] = useState(i18n.language);
+
+  useEffect(() => {
+    const handler = (lng: string) => setLang(lng);
+    i18n.on('languageChanged', handler);
+    return () => i18n.off('languageChanged', handler);
+  }, [i18n]);
+
+  const seasonStart = new Date(year, 4, 1);
   const weatherThisYear = weatherData
     .filter(w => {
       const d = new Date(w.date);
@@ -52,7 +64,7 @@ export default function WeatherSummaryPanel({
     cumGDD += calcGDD(w.temperature_2m_max, w.temperature_2m_min);
     cumRain += w.precipitation_sum ?? 0;
     return {
-      label: fmtShort(w.date),
+      date: w.date,
       gdd: Math.round(cumGDD),
       rain: Math.round(cumRain * 10) / 10,
     };
@@ -84,7 +96,7 @@ export default function WeatherSummaryPanel({
             <ThermostatIcon fontSize="small" sx={{ color: '#C62828' }} />
             <Box>
               <Typography variant="caption" color="text.secondary">{t('heatSum')}</Typography>
-              <Typography sx={{ fontWeight: 700 }}>{lastEntry?.gdd ?? 0} °C·vrk</Typography>
+              <Typography sx={{ fontWeight: 700 }}>{lastEntry?.gdd ?? 0} {t('gddUnit')}</Typography>
             </Box>
           </Box>
         </Grid>
@@ -102,13 +114,40 @@ export default function WeatherSummaryPanel({
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={cumulativeData} margin={{ top: 4, right: 16, left: -16, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-          <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" />
-          <YAxis yAxisId="gdd" tick={{ fontSize: 10 }} width={40} tickFormatter={v => `${v}°`} />
-          <YAxis yAxisId="rain" orientation="right" tick={{ fontSize: 10 }} width={36} tickFormatter={v => `${v}mm`} />
+          <XAxis
+            dataKey="date"
+            tick={{ fontSize: 10, fill: theme.palette.text.secondary }}
+            tickFormatter={(date) => fmtShort(date, lang)}
+            interval="preserveStartEnd"
+          />
+          <YAxis
+            yAxisId="gdd"
+            tick={{ fontSize: 10, fill: theme.palette.text.secondary }}
+            width={40}
+            tickFormatter={v => `${v}°`}
+          />
+          <YAxis
+            yAxisId="rain"
+            orientation="right"
+            tick={{ fontSize: 10, fill: theme.palette.text.secondary }}
+            width={36}
+            tickFormatter={v => `${v}mm`}
+          />
           <Tooltip
+            contentStyle={{
+              fontSize: '0.75rem',
+              padding: '4px 8px',
+              lineHeight: 1.4,
+              backgroundColor: theme.palette.background.paper,
+              border: `1px solid ${theme.palette.divider}`,
+              color: theme.palette.text.primary,
+            }}
+            labelStyle={{ fontWeight: 600, marginBottom: 2, color: theme.palette.text.primary }}
+            itemStyle={{ color: theme.palette.text.primary }}
+            labelFormatter={(date) => fmtShort(date as string, lang)}
             formatter={(v, name) =>
               name === 'gdd'
-                ? [`${v} °C·vrk`, t('heatSum')]
+                ? [`${v} ${t('gddUnit')}`, t('heatSum')]
                 : [`${v} mm`, t('totalRain')]
             }
           />

@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, Paper, Grid, Button,
   Chip, Divider, Alert, CircularProgress, Card, CardActionArea,
+  Accordion, AccordionSummary, AccordionDetails,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import GrassIcon from '@mui/icons-material/Grass';
@@ -13,14 +14,13 @@ import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
 import ThermostatIcon from '@mui/icons-material/Thermostat';
 import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import MapIcon from '@mui/icons-material/Map';
 import AddIcon from '@mui/icons-material/Add';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAppStore } from '../store/appStore';
 import { getNdviStatus } from '../utils/ndviStatus';
 import WeatherSummaryPanel from '../components/dashboard/WeatherSummaryPanel';
-
-const fmt = (iso: string) =>
-  new Date(iso).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
+import CropStatisticsPanel from '../components/dashboard/CropStatisticsPanel';
+import NewFieldDialog from '../components/layout/NewFieldDialog';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -28,11 +28,10 @@ const NAV_CARDS = [
   { labelKey: 'fields',   descKey: 'navFieldsDesc',   path: '/fields',   icon: <GrassIcon sx={{ fontSize: 36 }} color="primary" />,    requiresField: false },
   { labelKey: 'weather',  descKey: 'navWeatherDesc',  path: '/weather',  icon: <WbSunnyIcon sx={{ fontSize: 36 }} color="primary" />,  requiresField: true  },
   { labelKey: 'analysis', descKey: 'navAnalysisDesc', path: '/analysis', icon: <BarChartIcon sx={{ fontSize: 36 }} color="primary" />, requiresField: true  },
-  { labelKey: 'geojson',  descKey: 'navGeojsonDesc',  path: '/geojson',  icon: <MapIcon sx={{ fontSize: 36 }} color="primary" />,      requiresField: false },
 ];
 
 export default function DashboardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const {
     fields, fieldsFetched, fieldsLoading,
@@ -40,6 +39,26 @@ export default function DashboardPage() {
     ndviEntries, weatherData, weatherLoading,
     activeGeometryHash,
   } = useAppStore();
+
+  const [newFieldOpen, setNewFieldOpen] = useState(false);
+  const [expanded, setExpanded] = useState<string | false>(false);
+  const [lang, setLang] = useState(i18n.language);
+
+  useEffect(() => {
+    const handler = (lng: string) => setLang(lng);
+    i18n.on('languageChanged', handler);
+    return () => i18n.off('languageChanged', handler);
+  }, [i18n]);
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString(
+      lang === 'fi' ? 'fi-FI' : 'en-GB',
+      { day: 'numeric', month: 'numeric', year: 'numeric' }
+    );
+
+  const handleAccordion = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
+    setExpanded(isExpanded ? panel : false);
+  };
 
   useEffect(() => { fetchFields(); }, [fetchFields]);
 
@@ -56,6 +75,11 @@ export default function DashboardPage() {
   const status = latestEntry ? getNdviStatus(latestEntry.stats.average, t) : null;
 
   const totalArea = fields.reduce((s, f) => s + (f.area ?? 0), 0);
+  const hasCropData = fields.some(f => f.kasvulohkot && f.kasvulohkot.length > 0);
+
+  const newFieldDialog = (
+    <NewFieldDialog open={newFieldOpen} onClose={() => setNewFieldOpen(false)} />
+  );
 
   if (!fieldsLoading && fieldsFetched && fields.length === 0) {
     return (
@@ -64,13 +88,12 @@ export default function DashboardPage() {
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <GrassIcon sx={{ fontSize: 56, color: 'action.disabled', mb: 2 }} />
           <Typography variant="h6" sx={{ mb: 1 }}>{t('noFields')}</Typography>
-          <Typography color="text.secondary" sx={{ mb: 3 }}>
-            {t('addFieldPrompt')}
-          </Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/geojson')}>
+          <Typography color="text.secondary" sx={{ mb: 3 }}>{t('addFieldPrompt')}</Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNewFieldOpen(true)}>
             {t('addField')}
           </Button>
         </Paper>
+        {newFieldDialog}
       </Box>
     );
   }
@@ -78,6 +101,8 @@ export default function DashboardPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       <PageHeader />
+
+      {newFieldDialog}
 
       <Grid container spacing={2}>
         {NAV_CARDS.map(({ labelKey, descKey, path, icon, requiresField }) => {
@@ -103,6 +128,19 @@ export default function DashboardPage() {
             </Grid>
           );
         })}
+
+        <Grid size={{ xs: 6, sm: 3 }}>
+          <Card elevation={0} variant="outlined" sx={{ height: '100%' }}>
+            <CardActionArea
+              onClick={() => setNewFieldOpen(true)}
+              sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
+            >
+              <AddIcon sx={{ fontSize: 36 }} color="primary" />
+              <Typography sx={{ fontWeight: 600, mt: 1 }}>{t('newField')}</Typography>
+              <Typography variant="caption" color="text.secondary">{t('navNewFieldDesc')}</Typography>
+            </CardActionArea>
+          </Card>
+        </Grid>
       </Grid>
 
       {fieldsLoading ? <CircularProgress size={20} /> : (
@@ -193,22 +231,54 @@ export default function DashboardPage() {
       )}
 
       {hasData && (
-        <Paper sx={{ p: 2.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <ThermostatIcon color="primary" fontSize="small" />
-            <Typography sx={{ fontWeight: 600 }}>
-              {t('growingSeason', { year: CURRENT_YEAR })}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">{t('growingSeasonNote')}</Typography>
-          </Box>
-
-          <WeatherSummaryPanel
-            weatherData={weatherData}
-            weatherLoading={weatherLoading}
-            year={CURRENT_YEAR}
-          />
-        </Paper>
+        <Accordion
+          expanded={expanded === 'weather'}
+          onChange={handleAccordion('weather')}
+          elevation={0}
+          variant="outlined"
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <ThermostatIcon color="primary" fontSize="small" />
+              <Typography sx={{ fontWeight: 600 }}>
+                {t('growingSeason', { year: CURRENT_YEAR })}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+                {t('growingSeasonNote')}
+              </Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <WeatherSummaryPanel
+              weatherData={weatherData}
+              weatherLoading={weatherLoading}
+              year={CURRENT_YEAR}
+            />
+          </AccordionDetails>
+        </Accordion>
       )}
+
+      {hasCropData && (
+        <Accordion
+          expanded={expanded === 'crops'}
+          onChange={handleAccordion('crops')}
+          elevation={0}
+          variant="outlined"
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <GrassIcon color="primary" fontSize="small" />
+              <Typography sx={{ fontWeight: 600 }}>
+                {t('cropStatistics', { defaultValue: 'Kasvilajit' })}
+              </Typography>
+            </Box>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <CropStatisticsPanel fields={fields} />
+          </AccordionDetails>
+        </Accordion>
+      )}
+
     </Box>
   );
 }

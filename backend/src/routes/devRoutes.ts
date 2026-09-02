@@ -83,8 +83,7 @@ router.post("/import-CropParcels", async (req: Request, res: Response) => {
         peruslohkotunnus:     doc.peruslohkotunnus,
         lohkonumero:          doc.lohkonumero,
         pinta_ala:            doc.pinta_ala ? parseFloat(doc.pinta_ala) : null,
-        kasvikoodi:           doc.kasvikoodi,
-        kasvikoodi_selite_fi: doc.kasvikoodi_selite_fi,
+        kasvikoodi:           doc.kasvikoodi,        
         luomuviljely:         doc.luomuviljely,
         geometry:             doc.geometry,
       });

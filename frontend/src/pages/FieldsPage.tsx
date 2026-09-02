@@ -5,10 +5,12 @@ import {
   Box, Typography, Paper, List, ListItem,
   ListItemText, CircularProgress, Alert, Chip, Divider,
   Tooltip, IconButton, Collapse, useMediaQuery, useTheme,
+  Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined';
 import { useAppStore } from '../store/appStore';
 import NdviMapViewer from '../components/ndvi/NdviMapViewer';
 import SearchIcon from '@mui/icons-material/Search';
@@ -32,6 +34,7 @@ export default function FieldsPage() {
     selectedFieldId,
     setSelectedField,
     fetchImagesForField,
+    deleteField,
     startDate,
     newFieldAdded,
     setNewFieldAdded,
@@ -41,15 +44,15 @@ export default function FieldsPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showNewFieldBanner, setShowNewFieldBanner] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const listRef = useRef<HTMLUListElement>(null);
 
-  // Hae fields kun fieldsFetched resetoituu false:ksi
   useEffect(() => {
     if (!fieldsFetched) fetchFields();
   }, [fieldsFetched, fetchFields]);
 
-  // Banner store-staten kautta
   useEffect(() => {
     if (!newFieldAdded) return;
     setShowNewFieldBanner(true);
@@ -60,18 +63,14 @@ export default function FieldsPage() {
     return () => clearTimeout(timer);
   }, [newFieldAdded, setNewFieldAdded]);
 
-  // Scrollaa valittuun kenttään kun selectedFieldId tai fields muuttuu
   useEffect(() => {
     if (!selectedFieldId || !listRef.current) return;
     const el = listRef.current.querySelector(`[data-id="${selectedFieldId}"]`);
     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [selectedFieldId, fields]);
 
-  // Kun nav-drawer klikkaa "Fields" uudelleen, state.openList avaa listan
   useEffect(() => {
-    if (location.state?.openList) {
-      setListOpen(true);
-    }
+    if (location.state?.openList) setListOpen(true);
   }, [location.state]);
 
   useEffect(() => {
@@ -83,13 +82,18 @@ export default function FieldsPage() {
     setSelectedField(id);
     setListOpen(false);
     const field = fields.find((f) => f.id === id);
-    if (field) {
-      fetchImagesForField(field, startDate, today);
-    }
+    if (field) fetchImagesForField(field, startDate, today);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await deleteField(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
   };
 
   const selectedField = fields.find((f) => f.id === selectedFieldId);
-
   const filteredFields = fields.filter(f =>
     f.name.toLowerCase().includes(debouncedSearch.toLowerCase()));
   const showList = !isMobile || listOpen;
@@ -98,7 +102,6 @@ export default function FieldsPage() {
   return (
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, height: '100%', minHeight: 0 }}>
 
-      {/* ─── Lohkolista + collapse-toggle ─── */}
       {showList && (
         <Box sx={{
           display: 'flex',
@@ -163,7 +166,29 @@ export default function FieldsPage() {
 
               <List ref={listRef} disablePadding sx={{ overflow: 'auto', flex: 1 }}>
                 {filteredFields.map((field, i) => (
-                  <ListItem key={field.id} disablePadding divider={i < filteredFields.length - 1}>
+                  <ListItem
+                    key={field.id}
+                    disablePadding
+                    divider={i < filteredFields.length - 1}
+                    secondaryAction={
+                      <Tooltip title={t('deleteField') ?? 'Poista pelto'}>
+                        <IconButton
+                          edge="end"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget({ id: field.id, name: field.name });
+                          }}
+                          sx={{
+                            color: selectedFieldId === field.id ? 'rgba(255,255,255,0.7)' : 'action.active',
+                            mr: 0.5,
+                          }}
+                        >
+                          <DeleteOutlineIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    }
+                  >
                     <ListItemText
                       data-id={field.id}
                       primary={field.name}
@@ -209,7 +234,6 @@ export default function FieldsPage() {
         </Box>
       )}
 
-      {/* ─── Karttanäkymä ─── */}
       {showMap && (
         <Box sx={{
           flex: 1,
@@ -261,6 +285,35 @@ export default function FieldsPage() {
           </Box>
         </Box>
       )}
+
+      {/* Poisto-confirm-dialog */}
+      <Dialog open={!!deleteTarget} onClose={() => !deleting && setDeleteTarget(null)}>
+        <DialogTitle>{t('deleteField') ?? 'Poista pelto'}</DialogTitle>
+        <DialogContent>
+          <Typography>
+            {t('deleteFieldConfirm') ?? 'Haluatko varmasti poistaa pellon'}
+            {' '}<strong>{deleteTarget?.name}</strong>?
+          </Typography>
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            {t('deleteFieldWarning') ?? 'Kaikki NDVI-kuvat ja säätiedot poistetaan pysyvästi.'}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteTarget(null)} disabled={deleting}>
+            {t('cancel')}
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleDeleteConfirm}
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} /> : <DeleteOutlineIcon />}
+          >
+            {t('delete') ?? 'Poista'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Box>
   );
 }

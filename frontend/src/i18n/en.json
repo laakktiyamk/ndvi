@@ -130,5 +130,7 @@
   "fieldSearchError": "Search error",
   "fetchingImages": "Fetching NDVI Images...",
   "fetchingImagesHint": "This may take a moment. Please wait.",
-  "newFieldAdded": "New field added"
+  "newFieldAdded": "New field added",
+  "navNewFieldDesc": "Add a new field parcel",
+  "gddUnit": "°C·day"
 }

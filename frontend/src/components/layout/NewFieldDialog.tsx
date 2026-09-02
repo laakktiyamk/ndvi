@@ -54,16 +54,14 @@ function ClickHandler({ onMapClick, disabled }: {
 interface CropParcel {
   tunnus: string;
   lohkonumero: string;
-  kasvikoodi: string;
-  kasvikoodi_selite_fi: string;
+  kasvikoodi: string;  
   pinta_ala: number;
   luomuviljely: string;
   geometry: any;
 }
 
 interface CropType {
-  kasvikoodi: string;
-  kasvikoodi_selite_fi: string;
+  kasvikoodi: string;  
   color: string;
 }
 
@@ -159,14 +157,14 @@ export default function NewFieldDialog({ open, onClose }: Props) {
 
   // Kasvilajien värit
   useEffect(() => {
-    apiClient.get('/api/crop-types')
+    apiClient.get('/api/fields/crop-types')
       .then((res) => {
         const map = new Map<string, string>(
           res.data.map((ct: CropType) => [ct.kasvikoodi, ct.color])
         );
         setCropColorMap(map);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -186,7 +184,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setCropParcels([]);
     apiClient.get(`/api/fields/${foundField.peruslohkotunnus}/crop-parcels`)
       .then((res) => setCropParcels(res.data))
-      .catch(() => {});
+      .catch(() => { });
   }, [foundField]);
 
   const fetchFieldInfo = async (geometry: object) => {
@@ -316,38 +314,38 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setFetchError('');
   };
 
-  
-const handleSubmit = async () => {
-  if (!foundField) return;
-  setNoDataFound(false);
-  setSubmitError('');
-  setFetchError('');
-  setActiveStep(2);
 
-  const name = customName || fieldInfo?.name || '';
-  const newId = await fetchImagesForGeometry(
-    foundField.geometry,
-    startDate,
-    today,
-    name,
-    cropParcels,  // ← lisäys
-  );
+  const handleSubmit = async () => {
+    if (!foundField) return;
+    setNoDataFound(false);
+    setSubmitError('');
+    setFetchError('');
+    setActiveStep(2);
 
-  if (newId) {
-    const hasEntries = useAppStore.getState().ndviEntries.length > 0;
-    if (hasEntries) {
-      setSelectedField(newId);
-      setNewFieldAdded(true);
-      handleClose();
-      navigate('/fields');
+    const name = customName || fieldInfo?.name || '';
+    const newId = await fetchImagesForGeometry(
+      foundField.geometry,
+      startDate,
+      today,
+      name,
+      cropParcels,  // ← lisäys
+    );
+
+    if (newId) {
+      const hasEntries = useAppStore.getState().ndviEntries.length > 0;
+      if (hasEntries) {
+        setSelectedField(newId);
+        setNewFieldAdded(true);
+        handleClose();
+        navigate('/fields');
+      } else {
+        setActiveStep(1);
+        setNoDataFound(true);
+      }
     } else {
-      setActiveStep(1);
-      setNoDataFound(true);
+      setFetchError(t('fetchError') || 'Haku epäonnistui');
     }
-  } else {
-    setFetchError(t('fetchError') || 'Haku epäonnistui');
-  }
-};
+  };
 
   // ─── Reset + sulkeminen ────────────────────────────────────────────────────
 
@@ -547,7 +545,7 @@ const handleSubmit = async () => {
               <Chip
                 key={cp.tunnus}
                 size="small"
-                label={`${cp.lohkonumero} · ${cp.kasvikoodi_selite_fi} · ${cp.pinta_ala} ha${cp.luomuviljely === '1' ? ' 🌿' : ''}`}
+                label={`${cp.lohkonumero} · ${t(`crop:${cp.kasvikoodi}`)} · ${cp.pinta_ala} ha${cp.luomuviljely === '1' ? ' 🌿' : ''}`}
                 sx={{ backgroundColor: getCropColor(cp.kasvikoodi), color: '#000', fontWeight: 500 }}
               />
             ))}
@@ -719,22 +717,22 @@ const handleSubmit = async () => {
               activeStep === 0
                 ? <Button size="small" onClick={handleClose}>{t('cancel')}</Button>
                 : <Button size="small" onClick={handleBack} startIcon={<KeyboardArrowLeftIcon />}>
-                    {t('back')}
-                  </Button>
+                  {t('back')}
+                </Button>
             }
             nextButton={
               activeStep === 0
                 ? <Button size="small" onClick={handleNext} disabled={!foundField} endIcon={<KeyboardArrowRightIcon />}>
-                    {t('next')}
-                  </Button>
+                  {t('next')}
+                </Button>
                 : <Button
-                    size="small"
-                    variant="contained"
-                    onClick={handleSubmit}
-                    disabled={imagesLoading}
-                  >
-                    {t('fetchNdviImages') || 'Hae kuvat'}
-                  </Button>
+                  size="small"
+                  variant="contained"
+                  onClick={handleSubmit}
+                  disabled={imagesLoading}
+                >
+                  {t('fetchNdviImages') || 'Hae kuvat'}
+                </Button>
             }
           />
         ) : (

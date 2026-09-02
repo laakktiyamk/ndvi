@@ -524,3 +524,25 @@ export const ifExists = async (user: string, date: string) => {
 };
 
 // dev-jutut omaan tiedostoonsa ja käytössä vain dev-routessa dev-controllers
+
+// Poistaa kaikki Images joiden id sisältää geometryHashin
+export const deleteImagesByHash = async (geometryHash: string): Promise<boolean> => {
+  try {
+    await Image.deleteMany({ id: { $regex: geometryHash } });
+    return true;
+  } catch (err: any) {
+    console.error('ERROR deleteImagesByHash:', err.message);
+    return false;
+  }
+};
+
+// Poistaa kaikki Weather-dokumentit geometryHashin perusteella
+export const deleteWeatherByHash = async (geometryHash: string): Promise<boolean> => {
+  try {
+    await Weather.deleteMany({ geometryHash });
+    return true;
+  } catch (err: any) {
+    console.error('ERROR deleteWeatherByHash:', err.message);
+    return false;
+  }
+};

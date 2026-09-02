@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getFieldInfo, getFields } from '../controllers/fieldsInfoController';
+import { getFieldInfo, getFields,deleteField } from '../controllers/fieldsInfoController';
 import { fieldByLocation } from "../controllers/fieldByLocationController";
 import { cropParcelsByField } from "../controllers/cropParcelsByFieldController";
 import { getCropTypes } from "../controllers/cropTypeController";
@@ -11,8 +11,11 @@ router.get('/', getFields);          // GET  /api/fields
 router.post('/info', getFieldInfo);  // POST /api/fields/info
 
 router.get("/by-location", fieldByLocation);
-router.get("/:peruslohkotunnus/crop-parcels", cropParcelsByField); // GET /api/fields/0040006537/crop-parcels
 
 router.get("/crop-types", getCropTypes);
+//router.delete('/fields/:id', deleteField);
+router.delete('/:id', deleteField);
+
+router.get("/:peruslohkotunnus/crop-parcels", cropParcelsByField); // GET /api/fields/0040006537/crop-parcels
 
 export default router;

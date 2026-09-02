@@ -24,9 +24,9 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { labelKey: 'dashboard', icon: <DashboardIcon />, path: '/' },
-  { labelKey: 'fields',    icon: <LayersIcon />,    path: '/fields' },
-  { labelKey: 'weather',   icon: <WbSunnyIcon />,   path: '/weather',  requiresField: true },
-  { labelKey: 'analysis',  icon: <BarChartIcon />,  path: '/analysis', requiresField: true },
+  { labelKey: 'fields', icon: <LayersIcon />, path: '/fields' },
+  { labelKey: 'weather', icon: <WbSunnyIcon />, path: '/weather', requiresField: true },
+  { labelKey: 'analysis', icon: <BarChartIcon />, path: '/analysis', requiresField: true },
 ];
 
 interface Props {
@@ -83,7 +83,7 @@ export default function NavDrawer({ open, onClose, isMobile, navOpen, onNavOpen 
             </ListItemIcon>
             <ListItemText
               primary={t('newField') || 'Uusi pelto'}
-              primaryTypographyProps={{ fontWeight: 600 }}
+              slotProps={{ primary: { sx: { fontWeight: 600 } } }}
             />
           </ListItemButton>
         </ListItem>

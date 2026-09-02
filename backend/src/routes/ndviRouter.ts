@@ -12,7 +12,7 @@ router.post("/dates", checkToken, ndviControllers.dates);
 // Public or alternative routes (Do not require the checkToken middleware) because reading from MongoDB does not require a valid Sentinel Hub token
 router.get("/image/:sentinelid", ndviControllers.image);
 //router.post("/weather", ndviControllers.weather);
-router.get("/aois", ndviControllers.AOIs);
+//router.get("/aois", ndviControllers.AOIs);
 
 router.post("/images", ndviControllers.images);
 

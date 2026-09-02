@@ -130,5 +130,7 @@
   "fieldSearchError": "Hakuvirhe",
   "fetchingImages": "Haetaan NDVI-kuvia...",
   "fetchingImagesHint": "Tämä voi kestää hetken. Ole hyvä ja odota.",
-  "newFieldAdded": "Uusi lohko lisätty"
+  "newFieldAdded": "Uusi lohko lisätty",
+  "navNewFieldDesc": "Lisää uusi peltolohko",
+  "gddUnit": "°C·vrk"
 }

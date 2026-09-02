@@ -25,6 +25,7 @@ import StatisticsTab from './tabs/StatisticsTab';
 import OnMapTab from './tabs/OnMapTab';
 import LocationTab from './tabs/LocationTab';
 import VegetationDistribution from './VegetationDistribution';
+import CropFieldsOverlay from './CropFieldsOverlay';
 
 interface Props {
   fieldId: string;
@@ -32,7 +33,6 @@ interface Props {
   geometry?: { type: string; coordinates: unknown[] };
 }
 
-// Kielikoodin mukainen locale päivämäärän muotoiluun
 const dateLocaleMap: Record<string, string> = {
   fi: 'fi-FI',
   en: 'en-GB',
@@ -48,6 +48,15 @@ const getFmt = (language: string) => {
 
 const getYear = (date: string) => new Date(date).getFullYear();
 
+// Laskee kuvan todellisen sijainnin ja koon "object-fit: contain" -tilassa
+const getContainRect = (boxW: number, boxH: number, imgW: number, imgH: number) => {
+  const imgRatio = imgW / imgH;
+  const boxRatio = boxW / boxH;
+  const w = imgRatio > boxRatio ? boxW : boxH * imgRatio;
+  const h = imgRatio > boxRatio ? boxW / imgRatio : boxH;
+  return { w, h, offsetX: (boxW - w) / 2, offsetY: (boxH - h) / 2 };
+};
+
 interface LeafletAccordionProps {
   id: string;
   label: string;
@@ -58,7 +67,9 @@ interface LeafletAccordionProps {
   contentHeight?: number;
 }
 
-function LeafletAccordion({ id, label, icon, expanded, onChange, children, contentHeight = 340 }: LeafletAccordionProps) {
+function LeafletAccordion({
+  id, label, icon, expanded, onChange, children, contentHeight = 340,
+}: LeafletAccordionProps) {
   const [everExpanded, setEverExpanded] = useState(false);
 
   useEffect(() => {
@@ -78,7 +89,10 @@ function LeafletAccordion({ id, label, icon, expanded, onChange, children, conte
         overflow: 'hidden',
       }}
     >
-      <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+      <AccordionSummary
+        expandIcon={<ExpandMoreIcon />}
+        sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {icon}
           <Typography variant="body2" sx={{ fontWeight: 500 }}>{label}</Typography>
@@ -102,19 +116,20 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
-  const [touchStartX, setTouchStartX] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const imageBoxRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState<string>('image');
 
-  // ── Kuvan välähdyksen esto ────────────────────────────────────────────────
-  // displayUrl = tällä hetkellä näkyvä kuva (pysyy vanhana kunnes uusi on ladattu)
-  // pendingUrl = taustalla latautuva uusi kuva
   const [displayUrl, setDisplayUrl] = useState<string | undefined>(undefined);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const preloadRef = useRef<HTMLImageElement | null>(null);
 
-  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData } = useAppStore();
+  // ── Kasvulohko-overlay ────────────────────────────
+  const [selectedTunnus, setSelectedTunnus] = useState<string | null>(null);
+  const [imageSize, setImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+
+  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData, cropParcels } = useAppStore();
 
   const loading = imagesLoading && activeGeometryHash !== fieldId;
   const error = imagesError;
@@ -127,6 +142,23 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const selectedDate = filteredImages.length > 0
     ? new Date(filteredImages[Math.min(index, filteredImages.length - 1)].generationtime)
     : null;
+
+  // ── Nollataan valittu lohko kun pelto vaihtuu ─────
+  useEffect(() => {
+    setSelectedTunnus(null);
+  }, [fieldId]);
+
+  // ── Seurataan imageBoxin kokoa ResizeObserverilla ─
+  useEffect(() => {
+    const el = imageBoxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      setImageSize({ width, height });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (allEntries.length === 0) return;
@@ -151,7 +183,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [filteredImages.length]);
 
-  // ── Swipe-käsittely natiiveilla listenereillä (passive: false estää selaimen back/forward gesturet) ──
   useEffect(() => {
     const el = imageBoxRef.current;
     if (!el) return;
@@ -160,13 +191,12 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
 
     const onTouchStart = (e: TouchEvent) => {
       startX = e.touches[0].clientX;
-      setTouchStartX(startX);
     };
 
     const onTouchEnd = (e: TouchEvent) => {
       const diff = startX - e.changedTouches[0].clientX;
       if (Math.abs(diff) > 50) {
-        e.preventDefault(); // estää selaimen back/forward navigation gesturet
+        e.preventDefault();
         if (diff > 0) next();
         else prev();
       }
@@ -197,12 +227,10 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const current = filteredImages[safeIndex];
   const dataUrl = current?.image?.image.dataUrl;
 
-  // ── Esilataus: lataa uusi kuva taustalla, vaihda displayUrl vasta onLoad ──
   useEffect(() => {
     if (!dataUrl) return;
 
     if (isFirstLoad) {
-      // Ensimmäinen kuva: näytä skeleton kunnes ladattu
       const img = new Image();
       img.onload = () => {
         setDisplayUrl(dataUrl);
@@ -213,7 +241,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
       return;
     }
 
-    // Seuraavat kuvat: lataa taustalla, älä poista edellistä
     const img = new Image();
     img.onload = () => {
       setDisplayUrl(dataUrl);
@@ -222,7 +249,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     preloadRef.current = img;
 
     return () => {
-      // Peruuta kesken oleva lataus vaihtamalla src tyhjäksi
       img.src = '';
     };
   }, [dataUrl]);
@@ -242,10 +268,14 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const isLast = index === filteredImages.length - 1;
   const currentWeather = weatherData.find(w => w.sentinelid === current.sentinelid);
 
-  // ── NDVI-kuvaviewer ───────────────────────────────────────────────────────
+  const showOverlay =
+    displayUrl &&
+    cropParcels.length > 0 &&
+    imageSize.width > 0 &&
+    !!current?.image?.image;
+
   const imageViewer = (
     <>
-      {/* Toolbar */}
       <Box sx={{
         px: 2, py: 1,
         borderBottom: 1, borderColor: 'divider',
@@ -254,7 +284,11 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
       }}>
         <FormControl size="small" sx={{ minWidth: 100 }}>
           <InputLabel>{t('year')}</InputLabel>
-          <Select value={selectedYear} label={t('year')} onChange={(e) => setSelectedYear(Number(e.target.value))}>
+          <Select
+            value={selectedYear}
+            label={t('year')}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
+          >
             {availableYears.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
           </Select>
         </FormControl>
@@ -279,7 +313,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
         )}
       </Box>
 
-      {/* Kuva-alue */}
       <Box
         ref={imageBoxRef}
         sx={{
@@ -293,7 +326,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           touchAction: 'pan-y',
         }}
       >
-        {/* Skeleton vain ensimmäisellä latauksella */}
         {isFirstLoad && (
           <Skeleton
             variant="rectangular"
@@ -301,12 +333,15 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           />
         )}
 
-        {/* Näkyvä kuva — pysyy vanhana kunnes uusi on ladattu taustalla */}
         {displayUrl && (
           <Box
             component="img"
             src={displayUrl}
             alt={`NDVI ${fmt(imageDate)}`}
+            onLoad={(e) => {
+              const el = e.currentTarget as HTMLImageElement;
+              setNaturalSize({ w: el.naturalWidth, h: el.naturalHeight });
+            }}
             sx={{
               width: '100%', height: '100%',
               objectFit: 'contain',
@@ -315,6 +350,30 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             }}
           />
         )}
+
+        {/* ── Kasvulohkojen SVG-overlay ── */}
+        {showOverlay && naturalSize && (() => {
+          const rect = getContainRect(imageSize.width, imageSize.height, naturalSize.w, naturalSize.h);
+          return (
+            <CropFieldsOverlay
+              fields={cropParcels}
+              bbox={{
+                minX: current.image!.image.minX,
+                minY: current.image!.image.minY,
+                maxX: current.image!.image.maxX,
+                maxY: current.image!.image.maxY,
+              }}
+              selectedTunnus={selectedTunnus}
+              onSelect={setSelectedTunnus}
+              width={imageSize.width}
+              height={imageSize.height}
+              offsetX={rect.offsetX}
+              offsetY={rect.offsetY}
+              imgWidth={rect.w}
+              imgHeight={rect.h}
+            />
+          );
+        })()}
 
         <Chip
           label={fmt(imageDate)}
@@ -329,7 +388,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
         />
       </Box>
 
-      {/* Navigointipalkki */}
       <Box sx={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         px: 2, py: 1.5, borderTop: 1, borderColor: 'divider', flexShrink: 0,
@@ -367,24 +425,40 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
         </IconButton>
       </Box>
 
-      {/* Kasvillisuusjakauma */}
       <VegetationDistribution scale={current.image?.scale} />
+      {/* ── TESTI: kasvulohkojen valinta ── POISTETAAN MYÖHEMMIN ── */}
+      {cropParcels.length > 0 && (
+        <Box sx={{ p: 1, display: 'flex', gap: 1, flexWrap: 'wrap', borderTop: 1, borderColor: 'divider' }}>
+          {cropParcels.map(p => (
+            <Chip
+              key={p.tunnus}
+              label={`${p.lohkonumero} · ${t(`crop:${p.kasvikoodi}`)}`}
+              size="small"
+              onClick={() => setSelectedTunnus(t => t === p.tunnus ? null : p.tunnus)}
+              color={selectedTunnus === p.tunnus ? 'primary' : 'default'}
+              variant={selectedTunnus === p.tunnus ? 'filled' : 'outlined'}
+            />
+          ))}
+        </Box>
+      )}
     </>
   );
 
-  // ── MOBIILI: accordion-layout ─────────────────────────────────────────────
+  // ── MOBIILI ───────────────────────────────────────────────────────────────
   if (isMobile) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
 
-        {/* Kuva-accordion */}
         <Accordion
           expanded={expanded === 'image'}
           onChange={() => handleAccordion('image')}
           disableGutters elevation={0}
           sx={{ border: 1, borderColor: 'divider', borderRadius: '8px !important', '&:before': { display: 'none' }, overflow: 'hidden' }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ImageIcon fontSize="small" color="primary" />
               <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -399,14 +473,16 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           </AccordionDetails>
         </Accordion>
 
-        {/* Kaavio-accordion */}
         <Accordion
           expanded={expanded === 'chart'}
           onChange={() => handleAccordion('chart')}
           disableGutters elevation={0}
           sx={{ border: 1, borderColor: 'divider', borderRadius: '8px !important', '&:before': { display: 'none' } }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <ShowChartIcon fontSize="small" color="primary" />
               <Typography variant="body2" sx={{ fontWeight: 500 }}>{t('chart')}</Typography>
@@ -422,14 +498,16 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           </AccordionDetails>
         </Accordion>
 
-        {/* Tilastot-accordion */}
         <Accordion
           expanded={expanded === 'statistics'}
           onChange={() => handleAccordion('statistics')}
           disableGutters elevation={0}
           sx={{ border: 1, borderColor: 'divider', borderRadius: '8px !important', '&:before': { display: 'none' } }}
         >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}>
+          <AccordionSummary
+            expandIcon={<ExpandMoreIcon />}
+            sx={{ minHeight: 44, '& .MuiAccordionSummary-content': { my: 0.5 } }}
+          >
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <BarChartIcon fontSize="small" color="primary" />
               <Typography variant="body2" sx={{ fontWeight: 500 }}>{t('statistics')}</Typography>
@@ -440,7 +518,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           </AccordionDetails>
         </Accordion>
 
-        {/* Kartalla-accordion */}
         <LeafletAccordion
           id="onmap"
           label={t('onMap')}
@@ -457,7 +534,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           />
         </LeafletAccordion>
 
-        {/* Sijainti-accordion */}
         <LeafletAccordion
           id="location"
           label={t('location')}
@@ -476,7 +552,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     );
   }
 
-  // ── DESKTOP: rinnakkainen layout ──────────────────────────────────────────
+  // ── DESKTOP ───────────────────────────────────────────────────────────────
   return (
     <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, height: '100%' }}>
       <Paper
@@ -502,6 +578,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             geometry={geometry}
             entry={current}
             entries={filteredImages}
+            allEntries={allEntries}
             selectedIndex={index}
             onSelect={setIndex}
           />

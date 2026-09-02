@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@mui/material';
 import {
   ComposedChart, Line, Area, BarChart, Bar,
   XAxis, YAxis, CartesianGrid,
@@ -61,6 +62,8 @@ export default function NdviTimelineChart({
 
   if (!entries.length) return null;
 
+  const theme = useTheme();  
+
   const data = entries.map((e, i) => ({
     i,
     date: e.generationtime,
@@ -108,17 +111,17 @@ export default function NdviTimelineChart({
         tick={{ fontSize: 10 }}
         width={36}
       />
-      <Tooltip
-        contentStyle={{
-          fontSize: '0.75rem',
-          padding: '4px 8px',
-          lineHeight: 1.4,
-          backgroundColor: 'rgba(30,30,30,0.9)',
-          border: '1px solid #444',
-          color: '#fff',
-        }}
-        labelStyle={{ fontWeight: 600, marginBottom: 2, color: '#fff' }}
-        itemStyle={{ color: '#fff' }}
+<Tooltip
+  contentStyle={{
+    fontSize: '0.75rem',
+    padding: '4px 8px',
+    lineHeight: 1.4,
+    backgroundColor: theme.palette.background.paper,
+    border: `1px solid ${theme.palette.divider}`,
+    color: theme.palette.text.primary,
+  }}
+  labelStyle={{ fontWeight: 600, marginBottom: 2, color: theme.palette.text.primary }}
+  itemStyle={{ color: theme.palette.text.primary }}
         formatter={(value, name) => {
           // stdRange tulee arrayna — näytetään low–high
           if (name === 'stdRange' && Array.isArray(value)) {

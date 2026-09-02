@@ -19,8 +19,7 @@ interface IGeometry {
 export interface IKasvulohko {
   tunnus: string;
   lohkonumero: string;
-  kasvikoodi: string;
-  kasvikoodi_selite_fi: string;
+  kasvikoodi: string;  
   pinta_ala: number;
   luomuviljely: string;
 }

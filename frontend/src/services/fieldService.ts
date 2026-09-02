@@ -6,3 +6,6 @@ export const getFields = () =>
 
 export const createField = (data: Partial<IField>) =>
   apiClient.post<IField>('/api/fields', data);
+
+export const deleteField = (id: string) =>
+  apiClient.delete(`/api/fields/${id}`);

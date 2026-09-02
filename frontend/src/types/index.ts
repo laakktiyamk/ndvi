@@ -2,10 +2,13 @@
 export interface ICropParcel {
   tunnus: string;
   lohkonumero: string;
-  kasvikoodi: string;
-  kasvikoodi_selite_fi: string;
+  kasvikoodi: string;  
   pinta_ala: number;
   luomuviljely: string;
+  geometry: {
+    type: 'Polygon' | 'MultiPolygon';
+    coordinates: unknown[];
+  };
 }
 
 // ─── Field ───────────────────────────────────────────

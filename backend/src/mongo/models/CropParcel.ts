@@ -7,8 +7,7 @@ const CropParcelSchema = new Schema({
   lohkonumero:           { type: String },
   vuosi:                 { type: String },
   pinta_ala:             { type: Number },
-  kasvikoodi:            { type: String },
-  kasvikoodi_selite_fi:  { type: String },
+  kasvikoodi:            { type: String },  
   luomuviljely:          { type: String },
   geometry: {
     type:        { type: String, enum: ["Polygon", "MultiPolygon"] },

@@ -3,6 +3,7 @@ import type { IField, IWeather, MergedNdviEntry, ICropParcel } from '../types';
 import { getFields } from '../services/fieldService';
 import { getDatesForGeometry, fetchImagesByIds } from '../services/ndviService';
 import { getWeatherForGeometry } from '../services/weatherService';
+import { deleteField as deleteFieldService } from '../services/fieldService';
 import i18n from '../i18n/i18n';
 
 interface AppState {
@@ -13,12 +14,16 @@ interface AppState {
   fieldsError: string | null;
   selectedFieldId: string | null;
   recentFieldIds: string[];
+  deleteField: (id: string) => Promise<boolean>;
 
   // ── Aktiivinen AOI:n NDVI-data ───────────────────
   activeGeometryHash: string | null;
   ndviEntries: MergedNdviEntry[];
   imagesLoading: boolean;
   imagesError: string | null;
+
+  // ── Kasvulohkot ──────────────────────────────────
+  cropParcels: ICropParcel[];
 
   // ── Säätiedot ────────────────────────────────────
   weatherData: IWeather[];
@@ -46,7 +51,7 @@ interface AppState {
     startDate: string,
     endDate: string,
     name?: string,
-    cropParcels?: ICropParcel[]  // ← lisäys
+    cropParcels?: ICropParcel[]
   ) => Promise<string | null>;
   setGeoJsonInput: (text: string) => void;
   setValidGeoJson: (gj: object | null) => void;
@@ -68,13 +73,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   imagesLoading: false,
   imagesError: null,
 
+  cropParcels: [],
+
   weatherData: [],
   weatherLoading: false,
   weatherError: null,
 
   geoJsonInput: '',
   validGeoJson: null,
-  startDate: '2025-04-01',
+  startDate: `${new Date().getFullYear()}-04-01`,
 
   newFieldAdded: false,
 
@@ -123,6 +130,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         activeGeometryHash: field.id,
         ndviEntries: merged,
         imagesLoading: false,
+        cropParcels: field.kasvulohkot ?? [],
       });
 
       set({ weatherLoading: true, weatherError: null });
@@ -146,7 +154,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ imagesLoading: true, imagesError: null });
     try {
       const datesRes = await getDatesForGeometry(
-        geometry, startDate, endDate, name, cropParcels  // ← välitetään servicelle
+        geometry, startDate, endDate, name, cropParcels
       );
       const ids = datesRes.dates.map((d) => d.sentinelid);
 
@@ -166,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ndviEntries: merged,
         imagesLoading: false,
         fieldsFetched: false,
+        cropParcels: cropParcels ?? [],
       });
 
       set({ weatherLoading: true, weatherError: null });
@@ -202,9 +211,37 @@ export const useAppStore = create<AppState>((set, get) => ({
       ndviEntries: [],
       imagesLoading: false,
       imagesError: null,
+      cropParcels: [],
       weatherData: [],
       weatherLoading: false,
       weatherError: null,
+      startDate: `${new Date().getFullYear()}-04-01`,
       newFieldAdded: false,
     }),
+
+  deleteField: async (id) => {
+    try {
+      await deleteFieldService(id);
+
+      if (get().selectedFieldId === id) {
+        set({
+          selectedFieldId: null,
+          activeGeometryHash: null,
+          ndviEntries: [],
+          cropParcels: [],
+          weatherData: [],
+        });
+      }
+
+      set((state) => ({
+        fields: state.fields.filter((f) => f.id !== id),
+        recentFieldIds: state.recentFieldIds.filter((x) => x !== id),
+      }));
+
+      return true;
+    } catch (err: unknown) {
+      console.error('deleteField error:', err);
+      return false;
+    }
+  },
 }));

@@ -8,8 +8,9 @@ import NdviTimelineChart from './NdviTimelineChart';
 import StatisticsTab from './tabs/StatisticsTab';
 import OnMapTab from './tabs/OnMapTab';
 import LocationTab from './tabs/LocationTab';
-import { NdviFilmroll } from './NdviFilmroll';            // ← uusi
-import type { NdviImageEntry } from './ndviFilmrollUtils'; // ← uusi
+import YearCompareTab from './tabs/YearCompareTab';
+// import { NdviFilmroll } from './NdviFilmroll';
+// import type { NdviImageEntry } from './ndviFilmrollUtils';
 
 interface Props {
   fieldId: string;
@@ -17,11 +18,12 @@ interface Props {
   geometry?: { type: string; coordinates: unknown[] };
   entry: MergedNdviEntry;
   entries: MergedNdviEntry[];
+  allEntries?: MergedNdviEntry[];
   selectedIndex: number;
   onSelect: (index: number) => void;
 }
 
-type TabKey = 'chart' | 'filmroll' | 'statistics' | 'onmap' | 'location'; // ← 'filmroll' lisätty
+type TabKey = 'chart' | 'yearcompare' | 'statistics' | 'onmap' | 'location';
 
 const fmt = (date: string) =>
   new Date(date).toLocaleDateString('fi-FI', {
@@ -30,25 +32,13 @@ const fmt = (date: string) =>
     year: 'numeric',
   });
 
-// Muuntaa MergedNdviEntry[] → NdviImageEntry[].
-// Säädä kenttänimet jos MergedNdviEntry:ssä on eri nimet.
-function toFilmrollEntries(entries: MergedNdviEntry[]): NdviImageEntry[] {
-  return entries.map((e) => ({
-    date: e.generationtime,
-    imageUrl: e.image?.url ?? '',
-    ndviMean: e.stats.average,
-    ndviMin: e.stats.min,
-    ndviMax: e.stats.max,
-    cloudCoverPct: 0, // ei saatavilla MergedNdviEntry:ssä
-  }));
-}
-
 export default function NdviViewPanel({
   fieldId,
   fieldName,
   geometry,
   entry,
   entries,
+  allEntries,
   selectedIndex,
   onSelect,
 }: Props) {
@@ -94,11 +84,11 @@ export default function NdviViewPanel({
           '& .MuiTab-root': { minHeight: 40, fontSize: '0.8rem', py: 0 },
         }}
       >
-        <Tab label={t('chart')}      value="chart"      />
-        <Tab label={t('filmroll', 'Filmroll')} value="filmroll" /> {/* ← uusi */}
-        <Tab label={t('statistics')} value="statistics" />
-        <Tab label={t('onMap')}      value="onmap"      />
-        <Tab label={t('location')}   value="location"   />
+        <Tab label={t('chart')}                        value="chart"       />
+        <Tab label={t('yearCompare') ?? 'Vuodet'}      value="yearcompare" />
+        <Tab label={t('statistics')}                   value="statistics"  />
+        <Tab label={t('onMap')}                        value="onmap"       />
+        <Tab label={t('location')}                     value="location"    />
       </Tabs>
 
       <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -111,18 +101,8 @@ export default function NdviViewPanel({
           />
         )}
 
-        {tab === 'filmroll' && (                          /* ← uusi blokki */
-          <Box sx={{ flex: 1, overflowY: 'auto', p: { xs: 1, sm: 1.5 } }}>
-            <NdviFilmroll
-              entries={toFilmrollEntries(entries)}
-              frameHeight={110}
-              onSelect={(filmEntry) => {
-                // Synkronoi valittu päivä muiden tabien kanssa
-                const idx = entries.findIndex(e => e.date === filmEntry.date);
-                if (idx !== -1) onSelect(idx);
-              }}
-            />
-          </Box>
+        {tab === 'yearcompare' && (
+          <YearCompareTab entries={allEntries ?? entries} />
         )}
 
         {tab === 'statistics' && (
