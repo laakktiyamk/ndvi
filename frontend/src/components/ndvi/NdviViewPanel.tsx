@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Tabs, Tab, Paper, Typography, CircularProgress, Alert } from '@mui/material';
 import { useAppStore } from '../../store/appStore';
-import type { MergedNdviEntry } from '../../types';
+import type { MergedNdviEntry, ICropParcel } from '../../types';
 
 import NdviTimelineChart from './NdviTimelineChart';
 import StatisticsTab from './tabs/StatisticsTab';
@@ -21,6 +21,10 @@ interface Props {
   allEntries?: MergedNdviEntry[];
   selectedIndex: number;
   onSelect: (index: number) => void;
+  // Kasvulohkojen valinta — välitetään edelleen OnMapTabille
+  cropParcels?: ICropParcel[];
+  selectedTunnus?: string | null;
+  onSelectField?: (tunnus: string | null) => void;
 }
 
 type TabKey = 'chart' | 'yearcompare' | 'statistics' | 'onmap' | 'location';
@@ -41,6 +45,9 @@ export default function NdviViewPanel({
   allEntries,
   selectedIndex,
   onSelect,
+  cropParcels = [],
+  selectedTunnus = null,
+  onSelectField,
 }: Props) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<TabKey>('chart');
@@ -118,6 +125,9 @@ export default function NdviViewPanel({
             entries={entries}
             selectedIndex={selectedIndex}
             onSelect={onSelect}
+            cropParcels={cropParcels}
+            selectedTunnus={selectedTunnus}
+            onSelectField={onSelectField}
           />
         )}
 

@@ -8,29 +8,41 @@ import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { MergedNdviEntry } from '../../../types';
+import type { MergedNdviEntry, ICropParcel } from '../../../types';
+import { getFieldColorMap } from '../CropFieldsOverlay';
 
 interface Props {
   entry: MergedNdviEntry;
   entries: MergedNdviEntry[];
   selectedIndex: number;
   onSelect: (index: number) => void;
+  // Kasvulohkot — valinnaisia, koska paneelia käytetään myös ilman niitä
+  cropParcels?: ICropParcel[];
+  selectedTunnus?: string | null;
+  onSelectField?: (tunnus: string | null) => void;
 }
 
 const fmt = (date: string) =>
   new Date(date).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
 
 // Erillinen karttakomponentti — voidaan mountata sekä normaaliin että dialogiin
-//function NdviMap({ entry }: { entry: MergedNdviEntry }) {
-function NdviMap({ entry, padding = [20, 20], zoomOut = 0 }: { 
+function NdviMap({
+  entry, padding = [20, 20], zoomOut = 0,
+  cropParcels = [], selectedTunnus = null, onSelectField,
+}: {
   entry: MergedNdviEntry;
   padding?: [number, number];
   zoomOut?: number;
-}){
+  cropParcels?: ICropParcel[];
+  selectedTunnus?: string | null;
+  onSelectField?: (tunnus: string | null) => void;
+}) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);
   const overlayRef = useRef<L.ImageOverlay | null>(null);
+  const cropLayerRef = useRef<L.GeoJSON | null>(null);
   const mapInitialized = useRef(false);
+  const [mapReady, setMapReady] = useState(false);
 
   const image = entry.image;
 
@@ -59,6 +71,7 @@ function NdviMap({ entry, padding = [20, 20], zoomOut = 0 }: {
       map.fitBounds(bounds, { padding });
       if (zoomOut > 0) map.zoomOut(zoomOut);
       leafletRef.current = map;
+      setMapReady(true);
     });
 
     return () => {
@@ -66,7 +79,9 @@ function NdviMap({ entry, padding = [20, 20], zoomOut = 0 }: {
       leafletRef.current?.remove();
       leafletRef.current = null;
       overlayRef.current = null;
+      cropLayerRef.current = null;
       mapInitialized.current = false;
+      setMapReady(false);
     };
   }, []);
 
@@ -82,6 +97,52 @@ function NdviMap({ entry, padding = [20, 20], zoomOut = 0 }: {
     }
   }, [entry.sentinelid]);
 
+  // ── Kasvulohkot GeoJSON-layerina, väritys ja korostus synkassa
+  //    NdviMapViewerin SVG-overlayn (kuvanäkymä) kanssa ──
+  useEffect(() => {
+    const map = leafletRef.current;
+    if (!map) return;
+
+    if (cropLayerRef.current) {
+      cropLayerRef.current.remove();
+      cropLayerRef.current = null;
+    }
+
+    if (cropParcels.length === 0) return;
+
+    const fieldColors = getFieldColorMap(cropParcels);
+
+    const featureCollection = {
+      type: 'FeatureCollection' as const,
+      features: cropParcels.map((p) => ({
+        type: 'Feature' as const,
+        properties: { tunnus: p.tunnus },
+        geometry: p.geometry,
+      })),
+    };
+
+    const layer = L.geoJSON(featureCollection, {
+      style: (feature) => {
+        const tunnus = feature!.properties.tunnus as string;
+        const isSelected = tunnus === selectedTunnus;
+        return {
+          color: fieldColors[tunnus],
+          weight: isSelected ? 3 : 1.5,
+          fillOpacity: isSelected ? 0.35 : 0,
+          dashArray: isSelected ? undefined : '5 3',
+        };
+      },
+      onEachFeature: (feature, lyr) => {
+        lyr.on('click', () => {
+          const tunnus = feature.properties.tunnus as string;
+          onSelectField?.(tunnus === selectedTunnus ? null : tunnus);
+        });
+      },
+    }).addTo(map);
+
+    cropLayerRef.current = layer;
+  }, [cropParcels, selectedTunnus, onSelectField, mapReady]);
+
   return (
     <Box
       ref={mapRef}
@@ -90,7 +151,9 @@ function NdviMap({ entry, padding = [20, 20], zoomOut = 0 }: {
   );
 }
 
-export default function OnMapTab({ entry }: Props) {
+export default function OnMapTab({
+  entry, cropParcels = [], selectedTunnus = null, onSelectField,
+}: Props) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const image = entry.image;
@@ -113,7 +176,12 @@ export default function OnMapTab({ entry }: Props) {
 
       {/* Normaali kartta */}
       <Box sx={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <NdviMap entry={entry} />
+        <NdviMap
+          entry={entry}
+          cropParcels={cropParcels}
+          selectedTunnus={selectedTunnus}
+          onSelectField={onSelectField}
+        />
       </Box>
 
       {/* Laajennettu dialogi */}
@@ -139,8 +207,15 @@ export default function OnMapTab({ entry }: Props) {
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', p: 1 }}>
           <Box sx={{ flex: 1, minHeight: 0 }}>
-            {/* key pakottaa remountin kun dialogi avataan */}            
-            <NdviMap key={expanded ? 'expanded' : 'normal'} entry={entry} zoomOut={2} />
+            {/* key pakottaa remountin kun dialogi avataan */}
+            <NdviMap
+              key={expanded ? 'expanded' : 'normal'}
+              entry={entry}
+              zoomOut={2}
+              cropParcels={cropParcels}
+              selectedTunnus={selectedTunnus}
+              onSelectField={onSelectField}
+            />
           </Box>
         </DialogContent>
       </Dialog>

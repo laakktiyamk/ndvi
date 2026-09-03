@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box, Paper, Typography, IconButton, Chip,
@@ -17,6 +17,7 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import MapIcon from '@mui/icons-material/Map';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import CloseIcon from '@mui/icons-material/Close';
 import { useAppStore } from '../../store/appStore';
 import NdviDatePicker from './NdviDatePicker';
 import NdviTimelineChart from './NdviTimelineChart';
@@ -25,7 +26,7 @@ import StatisticsTab from './tabs/StatisticsTab';
 import OnMapTab from './tabs/OnMapTab';
 import LocationTab from './tabs/LocationTab';
 import VegetationDistribution from './VegetationDistribution';
-import CropFieldsOverlay from './CropFieldsOverlay';
+import CropFieldsOverlay, { getFieldColorMap } from './CropFieldsOverlay';
 
 interface Props {
   fieldId: string;
@@ -117,7 +118,10 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const imageBoxRef = useRef<HTMLDivElement>(null);
+  const [imageBoxEl, setImageBoxEl] = useState<HTMLDivElement | null>(null);
+  const imageBoxRef = useCallback((el: HTMLDivElement | null) => {
+    setImageBoxEl(el);
+  }, []);
   const [expanded, setExpanded] = useState<string>('image');
 
   const [displayUrl, setDisplayUrl] = useState<string | undefined>(undefined);
@@ -149,16 +153,20 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   }, [fieldId]);
 
   // ── Seurataan imageBoxin kokoa ResizeObserverilla ─
+  // Huom: imageBoxRef on callback-ref (imageBoxEl-state), ei useRef,
+  // koska pelkkä useRef + useEffect([]) ajaisi tämän vain kerran
+  // ensimmäisellä renderillä — jolloin box ei vielä ole DOM:issa
+  // (komponentti palauttaa loading-spinnerin sillä hetkellä). Callback-ref
+  // laukeaa aina kun noodi oikeasti kiinnittyy, myös myöhemmin.
   useEffect(() => {
-    const el = imageBoxRef.current;
-    if (!el) return;
+    if (!imageBoxEl) return;
     const ro = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
       setImageSize({ width, height });
     });
-    ro.observe(el);
+    ro.observe(imageBoxEl);
     return () => ro.disconnect();
-  }, []);
+  }, [imageBoxEl]);
 
   useEffect(() => {
     if (allEntries.length === 0) return;
@@ -184,7 +192,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   }, [filteredImages.length]);
 
   useEffect(() => {
-    const el = imageBoxRef.current;
+    const el = imageBoxEl;
     if (!el) return;
 
     let startX = 0;
@@ -209,7 +217,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchend', onTouchEnd);
     };
-  }, [filteredImages.length]);
+  }, [imageBoxEl, filteredImages.length]);
 
   const handleDateChange = (date: Date | null) => {
     if (!date) return;
@@ -273,6 +281,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     cropParcels.length > 0 &&
     imageSize.width > 0 &&
     !!current?.image?.image;
+
+  const fieldColors = getFieldColorMap(cropParcels);
+  const selectedField = cropParcels.find(p => p.tunnus === selectedTunnus) ?? null;
 
   const imageViewer = (
     <>
@@ -426,19 +437,54 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
       </Box>
 
       <VegetationDistribution scale={current.image?.scale} />
-      {/* ── TESTI: kasvulohkojen valinta ── POISTETAAN MYÖHEMMIN ── */}
+
+      {/* ── Kasvulohkojen valinta ── */}
       {cropParcels.length > 0 && (
         <Box sx={{ p: 1, display: 'flex', gap: 1, flexWrap: 'wrap', borderTop: 1, borderColor: 'divider' }}>
-          {cropParcels.map(p => (
-            <Chip
-              key={p.tunnus}
-              label={`${p.lohkonumero} · ${t(`crop:${p.kasvikoodi}`)}`}
-              size="small"
-              onClick={() => setSelectedTunnus(t => t === p.tunnus ? null : p.tunnus)}
-              color={selectedTunnus === p.tunnus ? 'primary' : 'default'}
-              variant={selectedTunnus === p.tunnus ? 'filled' : 'outlined'}
-            />
-          ))}
+          {cropParcels.map(p => {
+            const isSelected = selectedTunnus === p.tunnus;
+            return (
+              <Chip
+                key={p.tunnus}
+                icon={
+                  <Box
+                    sx={{
+                      width: 10, height: 10, borderRadius: '50%',
+                      bgcolor: fieldColors[p.tunnus], ml: '6px', flexShrink: 0,
+                    }}
+                  />
+                }
+                label={`${p.lohkonumero} · ${t(`crop:${p.kasvikoodi}`)}`}
+                size="small"
+                onClick={() => setSelectedTunnus(cur => cur === p.tunnus ? null : p.tunnus)}
+                onDelete={isSelected ? () => setSelectedTunnus(null) : undefined}
+                color={isSelected ? 'primary' : 'default'}
+                variant={isSelected ? 'filled' : 'outlined'}
+              />
+            );
+          })}
+        </Box>
+      )}
+
+      {/* ── Valitun lohkon tiedot ── korvaa SVG-overlayn tooltipin,
+          koska hover-pohjainen tooltip ei toimi kosketuslaitteilla ── */}
+      {selectedField && (
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 1.5,
+          px: 2, py: 1, borderTop: 1, borderColor: 'divider',
+          bgcolor: 'action.hover', flexShrink: 0,
+        }}>
+          <Box sx={{
+            width: 12, height: 12, borderRadius: '50%',
+            bgcolor: fieldColors[selectedField.tunnus], flexShrink: 0,
+          }} />
+          <Typography variant="body2" sx={{ flex: 1 }}>
+            {t(`crop:${selectedField.kasvikoodi}`)} · {selectedField.pinta_ala} ha
+            {selectedField.luomuviljely === '1' && ' 🌿'}
+          </Typography>
+          <IconButton size="small" onClick={() => setSelectedTunnus(null)} aria-label={t('close') ?? 'Close'}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
         </Box>
       )}
     </>
@@ -531,6 +577,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             entries={filteredImages}
             selectedIndex={index}
             onSelect={setIndex}
+            cropParcels={cropParcels}
+            selectedTunnus={selectedTunnus}
+            onSelectField={setSelectedTunnus}
           />
         </LeafletAccordion>
 
@@ -581,6 +630,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             allEntries={allEntries}
             selectedIndex={index}
             onSelect={setIndex}
+            cropParcels={cropParcels}
+            selectedTunnus={selectedTunnus}
+            onSelectField={setSelectedTunnus}
           />
         </Box>
       )}
