@@ -17,7 +17,6 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import MapIcon from '@mui/icons-material/Map';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
-import CloseIcon from '@mui/icons-material/Close';
 import { useAppStore } from '../../store/appStore';
 import NdviDatePicker from './NdviDatePicker';
 import NdviTimelineChart from './NdviTimelineChart';
@@ -283,7 +282,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     !!current?.image?.image;
 
   const fieldColors = getFieldColorMap(cropParcels);
-  const selectedField = cropParcels.find(p => p.tunnus === selectedTunnus) ?? null;
 
   const imageViewer = (
     <>
@@ -327,11 +325,12 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
       <Box
         ref={imageBoxRef}
         sx={{
-          flex: 1, position: 'relative',
+          flex: { xs: '0 0 auto', md: 1 },
+          height: { xs: 300, md: 'auto' },
+          position: 'relative',
           bgcolor: 'background.default',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           overflow: 'hidden',
-          minHeight: { xs: 260, md: 0 },
           userSelect: 'none',
           overscrollBehaviorX: 'none',
           touchAction: 'pan-y',
@@ -454,7 +453,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
                     }}
                   />
                 }
-                label={`${p.lohkonumero} · ${t(`crop:${p.kasvikoodi}`)}`}
+                label={`${p.lohkonumero} · ${t(`crop:${p.kasvikoodi}`)} · ${p.pinta_ala} ha${p.luomuviljely === '1' ? ' 🌿' : ''}`}
                 size="small"
                 onClick={() => setSelectedTunnus(cur => cur === p.tunnus ? null : p.tunnus)}
                 onDelete={isSelected ? () => setSelectedTunnus(null) : undefined}
@@ -465,30 +464,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           })}
         </Box>
       )}
-
-      {/* ── Valitun lohkon tiedot ── korvaa SVG-overlayn tooltipin,
-          koska hover-pohjainen tooltip ei toimi kosketuslaitteilla ── */}
-      {selectedField && (
-        <Box sx={{
-          display: 'flex', alignItems: 'center', gap: 1.5,
-          px: 2, py: 1, borderTop: 1, borderColor: 'divider',
-          bgcolor: 'action.hover', flexShrink: 0,
-        }}>
-          <Box sx={{
-            width: 12, height: 12, borderRadius: '50%',
-            bgcolor: fieldColors[selectedField.tunnus], flexShrink: 0,
-          }} />
-          <Typography variant="body2" sx={{ flex: 1 }}>
-            {t(`crop:${selectedField.kasvikoodi}`)} · {selectedField.pinta_ala} ha
-            {selectedField.luomuviljely === '1' && ' 🌿'}
-          </Typography>
-          <IconButton size="small" onClick={() => setSelectedTunnus(null)} aria-label={t('close') ?? 'Close'}>
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </Box>
-      )}
     </>
   );
+
 
   // ── MOBIILI ───────────────────────────────────────────────────────────────
   if (isMobile) {
@@ -513,9 +491,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             </Box>
           </AccordionSummary>
           <AccordionDetails sx={{ p: 0 }}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', height: 420 }}>
-              {imageViewer}
-            </Box>
+            {imageViewer}
           </AccordionDetails>
         </Accordion>
 
