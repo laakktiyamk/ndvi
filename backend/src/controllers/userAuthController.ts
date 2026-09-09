@@ -29,9 +29,8 @@ import {
  * @returns A JSON response with the new user or an error message.
  */
 export const registerUser = async (req: Request, res: Response) => {
-  const errors = validationResult(req);
-  console.log("errors :",errors);
-  if (!errors.isEmpty()) {
+  const errors = validationResult(req);  
+  if (!errors.isEmpty()) {    
     return res.status(400).json({ errors: errors.array() });
   }
 

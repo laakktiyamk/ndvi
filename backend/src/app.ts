@@ -30,7 +30,7 @@ if (process.env.NODE_ENV !== "production") {
 
 
 // Palvelee frontendin buildin
-
+/*
 const frontendPath =
   process.env.NODE_ENV === "production"
     ? path.join(__dirname, "frontend")
@@ -38,12 +38,13 @@ const frontendPath =
 
 
 app.use(express.static(frontendPath));
-
+*/
 
 // SPA fallback — kaikki muut reitit → index.html
 
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
-});
+
+//app.get(/.*/, (req, res) => {
+//  res.sendFile(path.join(frontendPath, "index.html"));
+//});
 
 export default app;

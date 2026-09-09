@@ -1,10 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import rewind from '@turf/rewind';
-//import axios from "axios";
 import * as hash from "../utils/hash";
 const geoUtils = require("../utils/geoUtils");
 import { getStatistics } from "../sentinelhub/getStatistics_CDSE";
-//import * as imageRef from "../sentinelhub/getImage";
 import { getImage } from "../sentinelhub/getImage_CDSE";
 import * as imageDataRef from "../utils/image/getImageData";
 import * as dateTime from "../utils/dateTime";
@@ -14,14 +12,13 @@ import isDateInGrowingSeason from "../utils/isdateingrowingseason";
 import { SentinelRequest } from "../sentinelhub/sentinelhub_token";
 import { IImage } from '../types';
 import { getWeatherFromDbOrFetch } from '../services/weatherService';
-
-import { getUserId } from '../utils/getTokenUserId'
+import { getUserId } from '../utils/getTokenUserId';
+import { getGrowingSeasons } from '../utils/growingSeasonUtils';
 
 interface JwtPayload {
   _id: string;
   username: string;
 }
-
 
 // ============================================================
 // Interfaces
@@ -58,7 +55,6 @@ interface SentinelDate {
   ndviClassPercentages: number[];
 }
 
-
 // ============================================================
 // p-limit korvaaja (toimii CommonJS + Docker)
 // ============================================================
@@ -80,14 +76,8 @@ function createLimit(concurrency: number) {
       const run = () => {
         activeCount++;
         fn()
-          .then((val) => {
-            resolve(val);
-            next();
-          })
-          .catch((err) => {
-            reject(err);
-            next();
-          });
+          .then((val) => { resolve(val); next(); })
+          .catch((err) => { reject(err); next(); });
       };
 
       if (activeCount < concurrency) {
@@ -127,6 +117,9 @@ const getSentinelDates = async (
   if (stats && stats.length > 0) {
     const reversedStats = [...stats].reverse();
     for (const stat of reversedStats) {
+      // Suodatetaan kasvukauden ulkopuoliset pois
+      if (!isDateInGrowingSeason(stat.interval.from, growingSeason)) continue;
+
       const statRef = stat.outputs.ndvi.bands.B0.stats;
       if (statRef.mean >= 0.1) {
         data.push({
@@ -162,8 +155,6 @@ const getImageWithData = async (item: SentinelDate, geometry: any, authToken: st
   return null;
 };
 
-// ── saveSentinelDataToMongo — lisää kasvulohkot-parametri ─────────────────
-
 const saveSentinelDataToMongo = async (
   save: boolean,
   geometry: any,
@@ -172,7 +163,7 @@ const saveSentinelDataToMongo = async (
   authToken: string,
   name: string = '',
   userId: string = '',
-  kasvulohkot: any[] = []   // ← lisäys
+  kasvulohkot: any[] = []
 ): Promise<boolean> => {
   const id = hash.sha256(geometry);
   const area = geoUtils.getAreaFromGeometry(geometry);
@@ -182,11 +173,9 @@ const saveSentinelDataToMongo = async (
 
   try {
     if (save) {
-      // kasvulohkot mukaan saveDates-kutsuun
       res = await mongodb.saveDates(id, savedDates, geometry, area ?? 0, name, userId, kasvulohkot);
     }
 
-    // ... muu koodi pysyy samana ...
     const startTime = performance.now();
     const dates = await getSentinelDates(geometry, fromTime, toTime, authToken);
     console.log(dates.length, " STATISTICS ElapsedTime (sec): ", (performance.now() - startTime) / 1000);
@@ -218,9 +207,6 @@ const saveSentinelDataToMongo = async (
   }
 };
 
-
-// ── getDates — lisää kasvulohkot-parametri ────────────────────────────────
-
 async function getDates(
   returnData: boolean,
   geometry: any,
@@ -229,30 +215,38 @@ async function getDates(
   authToken: string,
   name: string = '',
   userId: string = '',
-  kasvulohkot: any[] = []   // ← lisäys
+  kasvulohkot: any[] = []
 ): Promise<any> {
   const id = hash.sha256(geometry);
   let data = await mongodb.getDates(id);
 
+  console.log('getDates: data in db:', data?.dates?.length ?? 0, 'dates');
+  console.log('getDates: fromTime:', fromTime, 'toTime:', toTime);
+
   if (!data || !data.dates || data.dates.length === 0) {
+    console.log('getDates: no data, fetching all');
     await saveSentinelDataToMongo(true, geometry, fromTime, toTime, authToken, name, userId, kasvulohkot);
   } else {
-    if (isDateInGrowingSeason(toTime, growingSeason)) {
-      // Hae uudempaa dataa eteenpäin
-      if (data.dates[0].generationtime < dateTime.zeroDateTime(toTime)) {
-        const newFromTime = new Date(dateTime.addOneDay(data.dates[0].generationtime));
-        await saveSentinelDataToMongo(false, geometry, newFromTime, toTime, authToken, name, userId);
-      }
+    console.log('getDates: newest:', data.dates[0].generationtime);
+    console.log('getDates: oldest:', data.dates[data.dates.length - 1].generationtime);
+    console.log('getDates: zeroDateTime(toTime):', dateTime.zeroDateTime(toTime));
+
+    // Hae uudempaa dataa jos uusin tallennettu on ennen toTimea
+    if (data.dates[0].generationtime < dateTime.zeroDateTime(toTime)) {
+      const newFromTime = new Date(dateTime.addOneDay(data.dates[0].generationtime));
+      console.log('getDates: fetching newer from:', newFromTime);
+      await saveSentinelDataToMongo(false, geometry, newFromTime, toTime, authToken, name, userId);
     }
 
-    // ← UUSI: hae vanhempaa dataa taaksepäin jos fromTime on ennen vanhinta tallennettua
+    // Hae vanhempaa dataa jos fromTime on ennen vanhinta tallennettua
     const oldestDate = data.dates[data.dates.length - 1]?.generationtime;
     if (fromTime && oldestDate && new Date(fromTime) < new Date(oldestDate)) {
-      const backfillToTime = new Date(oldestDate); // haetaan vanhin tallennettu asti
+      const backfillToTime = new Date(oldestDate);
+      console.log('getDates: fetching older from:', fromTime, 'to:', backfillToTime);
       await saveSentinelDataToMongo(false, geometry, fromTime, backfillToTime, authToken, name, userId);
     }
 
-    // Jos kasvulohkot annettu ja niitä ei vielä ole, päivitetään
+    // Päivitä metadata
     if (kasvulohkot.length > 0 && (!data.kasvulohkot || data.kasvulohkot.length === 0)) {
       await mongodb.saveDates(id, data.dates, geometry, data.area ?? 0, name || data.name, userId, kasvulohkot);
     } else if ((name && !data.name) || (userId && !data.userIds?.includes(userId))) {
@@ -266,8 +260,9 @@ async function getDates(
   return null;
 }
 
-
-// ── dates route handler — luetaan kasvulohkot req.body:stä ───────────────
+// ============================================================
+// dates route handler
+// ============================================================
 
 export const dates = async (req: SentinelRequest, res: Response, next: NextFunction): Promise<void> => {
   const authToken = req.authToken ?? '';
@@ -282,16 +277,32 @@ export const dates = async (req: SentinelRequest, res: Response, next: NextFunct
   } catch (e) { }
 
   const fromTime = new Date(req.body.start_date);
-  const toTime = new Date();
   const name = req.body.name ?? '';
   const userId = getUserId(req);
-  const kasvulohkot = req.body.kasvulohkot ?? [];  // ← lisäys
+  const kasvulohkot = req.body.kasvulohkot ?? [];
 
-  const data = await getDates(true, geometry, fromTime, toTime, authToken, name, userId, kasvulohkot);
+  const fromYear = fromTime.getFullYear();
+  const toYear = new Date().getFullYear();
+  const seasons = getGrowingSeasons(fromYear, toYear);
+
+  if (seasons.length === 0) {
+    res.status(404).send("no data available");
+    return;
+  }
+
+  const sentinelFrom = seasons[0].start;
+  const sentinelTo = seasons[seasons.length - 1].end;
+
+  const data = await getDates(true, geometry, sentinelFrom, sentinelTo, authToken, name, userId, kasvulohkot);
   console.log("Request handled in (sec): ", (performance.now() - startTime) / 1000);
 
+  // Sää: rinnakkain kasvukausittain
   const wStart = performance.now();
-  await getWeatherFromDbOrFetch(geometry, fromTime, toTime);
+  await Promise.all(
+    seasons.map(({ start, end }) =>
+      getWeatherFromDbOrFetch(geometry, start, end)
+    )
+  );
   console.log("Weather saved in (sec): ", (performance.now() - wStart) / 1000);
 
   if (data) {

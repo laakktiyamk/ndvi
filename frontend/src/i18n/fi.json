@@ -132,5 +132,6 @@
   "fetchingImagesHint": "Tämä voi kestää hetken. Ole hyvä ja odota.",
   "newFieldAdded": "Uusi lohko lisätty",
   "navNewFieldDesc": "Lisää uusi peltolohko",
-  "gddUnit": "°C·vrk"
+  "gddUnit": "°C·vrk",
+  "passwordMismatch": "Salasanat eivät täsmää"
 }

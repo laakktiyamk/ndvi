@@ -7,28 +7,45 @@ import {
 } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import { register } from '../services/authService';
+import axios from 'axios';
 
 export default function RegisterPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [username, setUsername]   = useState('');
-  const [email, setEmail]         = useState('');
-  const [password, setPassword]   = useState('');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
-  const [loading, setLoading]     = useState(false);
-  const [error, setError]         = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== password2) { setError('Salasanat eivät täsmää'); return; }
+    if (password !== password2) { setError(t('passwordMismatch')); return; }
     setLoading(true);
     setError(null);
     try {
       await register(email, password, username);
       navigate('/login', { state: { registered: true } });
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
-      else setError(t('fetchFailed'));
+      if (axios.isAxiosError(err)) {
+        const data = err.response?.data;
+        // Backend palauttaa { errors: [...] } arrayn
+        if (data?.errors && Array.isArray(data.errors)) {
+          const messages = data.errors.map((e: { msg: string }) => e.msg).join(' | ');
+          setError(messages);
+        } else if (data?.message) {
+          setError(data.message);
+        } else {
+          setError(t('fetchFailed'));
+        }
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(t('fetchFailed'));
+      }
     } finally {
       setLoading(false);
     }

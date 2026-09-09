@@ -373,6 +373,21 @@ export const getWeather = async (sentinelid: string): Promise<IWeather | null> =
   }
 };
 
+
+export const getWeatherByRange = async (
+  geometryHash: string,
+  startDate: Date,
+  endDate: Date
+): Promise<IWeather[]> => {
+  const start = startDate.toISOString().slice(0, 10) + 'T00:00:00Z';
+  const end = endDate.toISOString().slice(0, 10) + 'T00:00:00Z';
+  return await Weather.find({
+    geometryHash,
+    date: { $gte: start, $lte: end }
+  }).sort({ date: 1 });
+};
+
+// POISTA jatkossa
 export const getAllWeather = async (geometryHash: string): Promise<IWeather[]> => {
   try {
     return await Weather.find(
@@ -546,3 +561,4 @@ export const deleteWeatherByHash = async (geometryHash: string): Promise<boolean
     return false;
   }
 };
+
