@@ -133,5 +133,7 @@
   "newFieldAdded": "New field added",
   "navNewFieldDesc": "Add a new field parcel",
   "gddUnit": "°C·day",
-  "passwordMismatch": "Passwords do not match"
+  "passwordMismatch": "Passwords do not match",
+  "selectAllInView": "Select fields in view",
+  "unselectAllInView": "Deselect all"
 }

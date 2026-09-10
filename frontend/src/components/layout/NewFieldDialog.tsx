@@ -35,6 +35,25 @@ function MapZoomer({ center, bounds }: {
   return null;
 }
 
+// ─── ZoomWatcher ──────────────────────────────────────────────────────────────
+
+function ZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
+  const map = useMapEvents({
+    zoomend() { onZoomChange(map.getZoom()); },
+  });
+  useEffect(() => { onZoomChange(map.getZoom()); }, []);
+  return null;
+}
+
+
+// ─── MapRef ───────────────────────────────────────────────────────────────────
+
+function MapRef({ mapRef }: { mapRef: React.MutableRefObject<any> }) {
+  const map = useMap();
+  useEffect(() => { mapRef.current = map; }, [map]);
+  return null;
+}
+
 // ─── ClickHandler ─────────────────────────────────────────────────────────────
 
 function ClickHandler({ onMapClick, disabled }: {
@@ -54,14 +73,14 @@ function ClickHandler({ onMapClick, disabled }: {
 interface CropParcel {
   tunnus: string;
   lohkonumero: string;
-  kasvikoodi: string;  
+  kasvikoodi: string;
   pinta_ala: number;
   luomuviljely: string;
   geometry: any;
 }
 
 interface CropType {
-  kasvikoodi: string;  
+  kasvikoodi: string;
   color: string;
 }
 
@@ -122,12 +141,10 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setNewFieldAdded,
   } = useAppStore();
 
-  // ── Step: 0 = aluevalinta, 1 = asetukset, 2 = haetaan ───────────────────
   const [activeStep, setActiveStep] = useState(0);
   const [fetchError, setFetchError] = useState('');
   const steps = [t('selectArea'), t('settingsAndName'), t('fetchingImages') || 'Fetching'];
 
-  // ── Vaihe 1: kartta ───────────────────────────────────────────────────────
   const [searchText, setSearchText] = useState('');
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapBounds, setMapBounds] = useState<[[number, number], [number, number]] | null>(null);
@@ -138,8 +155,8 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   const [clicking, setClicking] = useState(false);
   const [searchError, setSearchError] = useState('');
   const [clickError, setClickError] = useState('');
+  const [currentZoom, setCurrentZoom] = useState(5);
 
-  // GeoJSON-paneeli
   const [geojsonPanelOpen, setGeojsonPanelOpen] = useState(false);
   const [geojsonText, setGeojsonText] = useState('');
   const [geojsonError, setGeojsonError] = useState('');
@@ -148,14 +165,16 @@ export default function NewFieldDialog({ open, onClose }: Props) {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Vaihe 2: asetukset ────────────────────────────────────────────────────
   const [fieldInfo, setFieldInfo] = useState<FieldInfo | null>(null);
   const [fieldInfoLoading, setFieldInfoLoading] = useState(false);
   const [customName, setCustomName] = useState('');
   const [noDataFound, setNoDataFound] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
-  // Kasvilajien värit
+  const mapRef = useRef<any>(null);
+  const [bboxFields, setBboxFields] = useState<any[]>([]);
+  const [bboxActive, setBboxActive] = useState(false);
+
   useEffect(() => {
     apiClient.get('/api/fields/crop-types')
       .then((res) => {
@@ -195,7 +214,6 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       setFieldInfo(res.data);
       setCustomName(res.data.name || '');
     } catch {
-      // optionaalinen
     } finally {
       setFieldInfoLoading(false);
     }
@@ -207,8 +225,6 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     for (const char of kasvikoodi) hash = char.charCodeAt(0) + ((hash << 5) - hash);
     return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
   };
-
-  // ─── GeoJSON-validointi ────────────────────────────────────────────────────
 
   const validateAndPreview = async (text: string, autoClose = false) => {
     setGeojsonError('');
@@ -260,8 +276,6 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // ─── Karttahaku + klikkaus ─────────────────────────────────────────────────
-
   const handleSearch = async () => {
     if (!searchText.trim()) return;
     setSearching(true);
@@ -299,7 +313,6 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     }
   };
 
-  // ─── Stepperit ─────────────────────────────────────────────────────────────
 
   const handleNext = async () => {
     if (!foundField) return;
@@ -314,7 +327,6 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setFetchError('');
   };
 
-
   const handleSubmit = async () => {
     if (!foundField) return;
     setNoDataFound(false);
@@ -328,7 +340,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       startDate,
       today,
       name,
-      cropParcels,  // ← lisäys
+      cropParcels,
     );
 
     if (newId) {
@@ -347,7 +359,33 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     }
   };
 
-  // ─── Reset + sulkeminen ────────────────────────────────────────────────────
+
+  const handleSelectAll = async () => {
+    if (bboxActive) {
+      setBboxFields([]);
+      setBboxActive(false);
+      setFoundField(null);
+      setCropParcels([]);
+      return;
+    }
+    if (!mapRef.current) return;
+    try {
+      const res = await apiClient.get('/api/fields/by-bbox', {
+        params: {
+          minLat: mapRef.current.getBounds().getSouth(),
+          maxLat: mapRef.current.getBounds().getNorth(),
+          minLon: mapRef.current.getBounds().getWest(),
+          maxLon: mapRef.current.getBounds().getEast(),
+        },
+      });
+      setBboxFields(res.data);
+      setBboxActive(true);
+      setFoundField(null);
+      setCropParcels([]);
+    } catch {
+      setClickError('Hakuvirhe');
+    }
+  };
 
   const handleClose = () => {
     setActiveStep(0);
@@ -367,6 +405,9 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setNoDataFound(false);
     setSubmitError('');
     setFetchError('');
+    setCurrentZoom(5);
+    setBboxFields([]);
+    setBboxActive(false);
     onClose();
   };
 
@@ -398,7 +439,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
           </Button>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           <Button
             size="small"
             variant={geojsonPanelOpen ? 'contained' : 'outlined'}
@@ -422,6 +463,20 @@ export default function NewFieldDialog({ open, onClose }: Props) {
             style={{ display: 'none' }}
             onChange={handleFileChange}
           />
+
+          {/* Näkyy vain kun zoom >= 12 */}
+          {currentZoom >= 12 && (
+            <Button
+              size="small"
+              variant={bboxActive ? 'contained' : 'outlined'}
+              color="secondary"
+              onClick={handleSelectAll}
+            >
+              {bboxActive
+                ? t('unselectAllInView') || 'Poista valinnat'
+                : t('selectAllInView') || 'Valitse pellot näkymässä'}
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -482,6 +537,8 @@ export default function NewFieldDialog({ open, onClose }: Props) {
           />
           <MapZoomer center={mapCenter} bounds={mapBounds} />
           <ClickHandler onMapClick={handleMapClick} disabled={geojsonPanelOpen} />
+          <ZoomWatcher onZoomChange={setCurrentZoom} />
+          <MapRef mapRef={mapRef} />
 
           {!geojsonPreview && polygonPositions.length > 0 && (
             <Polygon
@@ -508,6 +565,28 @@ export default function NewFieldDialog({ open, onClose }: Props) {
               }}
             />
           ))}
+
+          {/* Bbox-haun lohkot — klikattavissa */}
+          {bboxFields.map((field) => (
+            <GeoJSON
+              key={field.peruslohkotunnus}
+              data={field.geometry}
+              style={{
+                color: field.peruslohkotunnus === foundField?.peruslohkotunnus
+                  ? '#ff7800'   // valittu → oranssi
+                  : '#00bcd4',  // ei valittu → sininen
+                fillColor: field.peruslohkotunnus === foundField?.peruslohkotunnus
+                  ? '#ff7800'
+                  : '#00bcd4',
+                fillOpacity: 0.3,
+                weight: 2,
+              }}
+              eventHandlers={{
+                click: () => setFoundField(field),
+              }}
+            />
+          ))}
+
         </MapContainer>
       </Box>
 
@@ -652,14 +731,14 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     </Box>
   );
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   const stepContent = [step1, step2, step3][activeStep];
 
   return (
     <Dialog
       open={open}
-      onClose={activeStep === 2 ? undefined : handleClose} // ei suljettavissa haun aikana
+      onClose={activeStep === 2 ? undefined : handleClose}
       maxWidth="xl"
       fullWidth
       fullScreen={isMobile}
@@ -675,7 +754,6 @@ export default function NewFieldDialog({ open, onClose }: Props) {
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             {t('newField')}
           </Typography>
-          {/* Ei close-nappia step 3:ssa haun aikana */}
           {(activeStep < 2 || !!fetchError) && (
             <IconButton size="small" onClick={handleClose}>
               <CloseIcon fontSize="small" />
@@ -705,7 +783,6 @@ export default function NewFieldDialog({ open, onClose }: Props) {
         {stepContent}
       </DialogContent>
 
-      {/* Napit — piilotetaan step 3:ssa */}
       {activeStep < 2 && (
         isMobile ? (
           <MobileStepper

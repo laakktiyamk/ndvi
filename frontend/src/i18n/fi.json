@@ -133,5 +133,7 @@
   "newFieldAdded": "Uusi lohko lisätty",
   "navNewFieldDesc": "Lisää uusi peltolohko",
   "gddUnit": "°C·vrk",
-  "passwordMismatch": "Salasanat eivät täsmää"
+  "passwordMismatch": "Salasanat eivät täsmää",
+  "selectAllInView": "Valitse pellot näkymässä",
+  "unselectAllInView": "Poista valinnat"
 }
