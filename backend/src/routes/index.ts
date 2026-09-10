@@ -2,12 +2,12 @@ import { Router } from 'express';
 import userRouter from './userRouter';
 import ndviRouter from './ndviRouter';
 import weatherRouter from './weatherRouter';
-import chatRouter from './chatRouter';
+//import chatRouter from './chatRouter';
 import geocodeRouter from './geocodeRouter';
 import fieldsRouter from './fieldsRouter';
 import validateRouter from './validateGeoJSONRouter';
 import growingSeasonRouter from './growingSeasonRouter';
-import app from '../app';
+//import app from '../app';
 
 const router = Router();
 

@@ -135,5 +135,7 @@
   "gddUnit": "°C·day",
   "passwordMismatch": "Passwords do not match",
   "selectAllInView": "Select fields in view",
-  "unselectAllInView": "Deselect all"
+  "unselectAllInView": "Deselect all",
+  "showAsAreaChart": "Area chart",
+  "showAsLineChart": "Line chart"
 }

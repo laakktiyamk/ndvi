@@ -135,5 +135,7 @@
   "gddUnit": "°C·vrk",
   "passwordMismatch": "Salasanat eivät täsmää",
   "selectAllInView": "Valitse pellot näkymässä",
-  "unselectAllInView": "Poista valinnat"
+  "unselectAllInView": "Poista valinnat",
+  "showAsAreaChart": "Aluekaavio",
+  "showAsLineChart": "Viivakaavio"
 }
