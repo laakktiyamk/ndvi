@@ -137,5 +137,7 @@
   "selectAllInView": "Valitse pellot näkymässä",
   "unselectAllInView": "Poista valinnat",
   "showAsAreaChart": "Aluekaavio",
-  "showAsLineChart": "Viivakaavio"
+  "showAsLineChart": "Viivakaavio",
+  "today": "Tänään",
+  "seasonEnd": "Kasvukauden loppu"
 }

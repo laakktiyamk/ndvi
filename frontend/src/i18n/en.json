@@ -137,5 +137,7 @@
   "selectAllInView": "Select fields in view",
   "unselectAllInView": "Deselect all",
   "showAsAreaChart": "Area chart",
-  "showAsLineChart": "Line chart"
+  "showAsLineChart": "Line chart",
+  "today": "Today",
+  "seasonEnd": "Growing season end"
 }

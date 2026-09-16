@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo,useEffect } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -23,7 +23,7 @@ const getSavedMode = (): 'light' | 'dark' =>
 
 export default function App() {
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(getSavedMode);
-
+  
   const toggleTheme = () => {
     const next = themeMode === 'light' ? 'dark' : 'light';
     setThemeMode(next);

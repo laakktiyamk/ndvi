@@ -11,7 +11,7 @@ import WbSunnyIcon from '@mui/icons-material/WbSunny';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
-import NewFieldDialog from './NewFieldDialog';
+import NewFieldDialog from '../fields/NewFieldDialog';
 
 const DRAWER_WIDTH = 240;
 

@@ -4,6 +4,8 @@ import { getFields } from '../services/fieldService';
 import { getDatesForGeometry, fetchImagesByIds } from '../services/ndviService';
 import { getWeatherForGeometry } from '../services/weatherService';
 import { deleteField as deleteFieldService } from '../services/fieldService';
+import { getGrowingSeason } from '../services/growingSeasonService';
+import type { IGrowingSeason } from '../services/growingSeasonService';
 import i18n from '../i18n/i18n';
 
 interface AppState {
@@ -30,6 +32,11 @@ interface AppState {
   weatherLoading: boolean;
   weatherError: string | null;
 
+  // ── Kasvukausi ───────────────────────────────────
+  growingSeason: IGrowingSeason | null;
+  growingSeasonLoading: boolean;
+  growingSeasonError: string | null;
+
   // ── GeoJSON-syöte ────────────────────────────────
   geoJsonInput: string;
   validGeoJson: object | null;
@@ -53,6 +60,7 @@ interface AppState {
     name?: string,
     cropParcels?: ICropParcel[]
   ) => Promise<string | null>;
+  fetchGrowingSeason: () => Promise<void>;
   setGeoJsonInput: (text: string) => void;
   setValidGeoJson: (gj: object | null) => void;
   setStartDate: (d: string) => void;
@@ -78,6 +86,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   weatherData: [],
   weatherLoading: false,
   weatherError: null,
+
+  growingSeason: null,
+  growingSeasonLoading: false,
+  growingSeasonError: null,
 
   geoJsonInput: '',
   validGeoJson: null,
@@ -192,6 +204,19 @@ export const useAppStore = create<AppState>((set, get) => ({
         imagesError: e instanceof Error ? e.message : i18n.t('fetchFailed'),
       });
       return null;
+    }
+  },
+
+  fetchGrowingSeason: async () => {
+    set({ growingSeasonLoading: true, growingSeasonError: null });
+    try {
+      const data = await getGrowingSeason();
+      set({ growingSeason: data, growingSeasonLoading: false });
+    } catch (e: unknown) {
+      set({
+        growingSeasonError: e instanceof Error ? e.message : i18n.t('fetchFailed'),
+        growingSeasonLoading: false,
+      });
     }
   },
 

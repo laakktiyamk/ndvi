@@ -20,8 +20,7 @@ import { useAppStore } from '../store/appStore';
 import { getNdviStatus } from '../utils/ndviStatus';
 import WeatherSummaryPanel from '../components/dashboard/WeatherSummaryPanel';
 import CropStatisticsPanel from '../components/dashboard/CropStatisticsPanel';
-import NewFieldDialog from '../components/layout/NewFieldDialog';
-
+import NewFieldDialog from '../components/fields/NewFieldDialog';
 const CURRENT_YEAR = new Date().getFullYear();
 
 const NAV_CARDS = [

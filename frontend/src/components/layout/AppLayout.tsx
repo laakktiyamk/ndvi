@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppStore } from '../../store/appStore';
 import {
@@ -36,6 +36,14 @@ export default function AppLayout({ themeMode, onToggleTheme }: Props) {
   const activeFieldName = activeField?.name ?? (ndviEntries[0] as any)?.name ?? null;
 
   const effectiveLeft = isMobile ? 0 : navOpen ? DRAWER_WIDTH : 0;
+
+
+  const fetchGrowingSeason = useAppStore((s) => s.fetchGrowingSeason);
+
+
+  useEffect(() => {
+    fetchGrowingSeason();
+  }, []);
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
