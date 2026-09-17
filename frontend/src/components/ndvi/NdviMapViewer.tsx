@@ -6,6 +6,7 @@ import {
   Select, MenuItem, FormControl, InputLabel,
   useTheme, useMediaQuery,
   Accordion, AccordionSummary, AccordionDetails,
+  Tooltip as MuiTooltip,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
@@ -17,6 +18,7 @@ import ShowChartIcon from '@mui/icons-material/ShowChart';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import MapIcon from '@mui/icons-material/Map';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import { useAppStore } from '../../store/appStore';
 import NdviDatePicker from './NdviDatePicker';
 import NdviTimelineChart from './NdviTimelineChart';
@@ -26,6 +28,7 @@ import OnMapTab from './tabs/OnMapTab';
 import LocationTab from './tabs/LocationTab';
 import VegetationDistribution from './VegetationDistribution';
 import CropFieldsOverlay, { getFieldColorMap } from './CropFieldsOverlay';
+import NdviFilmrollDialog from './NdviFilmrollDialog';
 
 interface Props {
   fieldId: string;
@@ -131,6 +134,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const [selectedTunnus, setSelectedTunnus] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
+
+  // ── Filmroll-dialogi ──────────────────────────────
+  const [filmrollOpen, setFilmrollOpen] = useState(false);
 
   const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData, cropParcels } = useAppStore();
 
@@ -283,6 +289,18 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
 
   const fieldColors = getFieldColorMap(cropParcels);
 
+  // ── Filmroll-dialogi (jaettu mobiili- ja desktop-näkymän kesken) ──
+  const filmrollDialog = (
+    <NdviFilmrollDialog
+      open={filmrollOpen}
+      onClose={() => setFilmrollOpen(false)}
+      fieldName={fieldName}
+      entries={filteredImages}
+      onSelect={setIndex}
+      activeDate={current.generationtime}
+    />
+  );
+
   const imageViewer = (
     <>
       <Box sx={{
@@ -307,6 +325,18 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           onChange={handleDateChange}
           availableDates={filteredImages.map(e => new Date(e.generationtime))}
         />
+
+        <MuiTooltip title={t('filmroll.openButton', 'Selaa kuvia')}>
+          <IconButton
+            size="small"
+            onClick={() => setFilmrollOpen(true)}
+            aria-label={t('filmroll.openButton', 'Selaa kuvia')}
+            color={filmrollOpen ? 'primary' : 'default'}
+          >
+            <PhotoLibraryIcon fontSize="small" />
+          </IconButton>
+        </MuiTooltip>
+
         <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
           {t('imageCount', { count: filteredImages.length })}
         </Typography>
@@ -435,7 +465,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
         </IconButton>
       </Box>
 
-      <VegetationDistribution scale={current.image?.scale} />
+      <VegetationDistribution scale={current.image?.scale} avgValue={current.stats.average} />
 
       {/* ── Kasvulohkojen valinta ── */}
       {cropParcels.length > 0 && (
@@ -573,6 +603,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           }
         </LeafletAccordion>
 
+        {filmrollDialog}
       </Box>
     );
   }
@@ -612,6 +643,8 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           />
         </Box>
       )}
+
+      {filmrollDialog}
     </Box>
   );
 }

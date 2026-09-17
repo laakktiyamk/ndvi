@@ -139,5 +139,37 @@
   "showAsAreaChart": "Aluekaavio",
   "showAsLineChart": "Viivakaavio",
   "today": "Tänään",
-  "seasonEnd": "Kasvukauden loppu"
+  "seasonEnd": "Kasvukauden loppu",
+  "filmroll": {
+    "title": "Kuvagalleria",
+    "openButton": "Selaa kuvia",
+    "cloudCover": "pilvisyys",
+    "mean": "Keskiarvo",
+    "meanSub": "NDVI mean",
+    "range": "Vaihteluväli",
+    "fieldRange": "lohkon sisällä",
+    "cloud": "Pilvisyys",
+    "cloudSub": "SCL mask",
+    "scale": "Sijainti NDVI-asteikolla",
+    "scaleBare": "paljas",
+    "scaleNeutral": "neutraali",
+    "scaleLush": "rehevä",
+    "noData": "Ei kuvia valitulle lohkolle.",
+    "scrollLeft": "Vieritä vasemmalle",
+    "scrollRight": "Vieritä oikealle",
+    "scaleModerate": "kohtalainen",
+    "std": "Hajonta",
+    "stdSub": "NDVI std",
+    "uniformityUniform": "Tasainen",
+    "uniformityVariable": "Vaihteleva",
+    "uniformityUneven": "Epätasainen"
+  },
+  "vegetationAvgLabel": "NDVI keskiarvo",
+  "vegetationQuality": {
+  "poor": "Heikko",
+  "fair": "Tyydyttävä",
+  "good": "Hyvä",
+  "excellent": "Erinomainen"
 }
+}
+

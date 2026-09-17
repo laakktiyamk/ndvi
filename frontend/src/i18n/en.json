@@ -87,7 +87,7 @@
   "identifiedLocation": "Identified location",
   "fetchingNdviDates": "Fetching NDVI dates...",
   "geoJsonIssues": "GeoJSON issues:",
-  "validGeoJson": "Valid GeoJSON", 
+  "validGeoJson": "Valid GeoJSON",
   "fetchNdviImages": "Fetch NDVI images",
   "ndviOnMap": "NDVI satellite image on map",
   "aoiLocation": "AOI location",
@@ -139,5 +139,36 @@
   "showAsAreaChart": "Area chart",
   "showAsLineChart": "Line chart",
   "today": "Today",
-  "seasonEnd": "Growing season end"
+  "seasonEnd": "Growing season end",
+  "filmroll": {
+    "title": "Image gallery",
+    "openButton": "Browse images",
+    "cloudCover": "cloud cover",
+    "mean": "Average",
+    "meanSub": "NDVI mean",
+    "range": "Range",
+    "fieldRange": "within field",
+    "cloud": "Cloud cover",
+    "cloudSub": "SCL mask",
+    "scale": "Position on NDVI scale",
+    "scaleBare": "bare",
+    "scaleNeutral": "neutral",
+    "scaleLush": "lush",
+    "noData": "No images for the selected field.",
+    "scrollLeft": "Scroll left",
+    "scrollRight": "Scroll right",
+    "scaleModerate": "moderate",
+    "std": "Std. deviation",
+    "stdSub": "NDVI std",
+    "uniformityUniform": "Uniform",
+    "uniformityVariable": "Variable",
+    "uniformityUneven": "Uneven"
+  },
+  "vegetationAvgLabel": "NDVI average",
+  "vegetationQuality": {
+  "poor": "Poor",
+  "fair": "Fair",
+  "good": "Good",
+  "excellent": "Excellent"
+}
 }
