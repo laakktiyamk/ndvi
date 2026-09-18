@@ -115,6 +115,7 @@ const getSentinelDates = async (
   }
 
   if (stats && stats.length > 0) {
+    console.log("stats:", stats);
     const reversedStats = [...stats].reverse();
     for (const stat of reversedStats) {
       // Suodatetaan kasvukauden ulkopuoliset pois

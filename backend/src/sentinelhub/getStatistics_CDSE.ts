@@ -117,7 +117,7 @@ function evaluatePixel(s) {
           data: [
             {
               dataFilter: { maxCloudCoverage: 20 },
-              type: "sentinel-2-l1c",
+              type: "sentinel-2-l2a",
             },
           ],
         },

@@ -65,13 +65,12 @@ export const getImage = async (
         properties: { crs: "http://www.opengis.net/def/crs/OGC/1.3/CRS84" },
       },
       data: [{
-        type: "sentinel-2-l1c",
+        type: "sentinel-2-l2a",
         dataFilter: {
           timeRange: {
             from: new Date(date).toISOString(),
             to: new Date(addOneDay(date)).toISOString(),
           },
-          maxCloudCoverage: 20,
         },
       }],
     },
