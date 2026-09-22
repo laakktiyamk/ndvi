@@ -4,13 +4,14 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField,
   Button, Alert, CircularProgress, Link, Divider,
+  ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import { register } from '../services/authService';
 import axios from 'axios';
 
 export default function RegisterPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -18,8 +19,6 @@ export default function RegisterPage() {
   const [password2, setPassword2] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +31,6 @@ export default function RegisterPage() {
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const data = err.response?.data;
-        // Backend palauttaa { errors: [...] } arrayn
         if (data?.errors && Array.isArray(data.errors)) {
           const messages = data.errors.map((e: { msg: string }) => e.msg).join(' | ');
           setError(messages);
@@ -51,6 +49,8 @@ export default function RegisterPage() {
     }
   };
 
+  const currentLang = i18n.language.startsWith('fi') ? 'fi' : 'en';
+
   return (
     <Box sx={{
       minHeight: '100vh',
@@ -63,7 +63,16 @@ export default function RegisterPage() {
       <Paper sx={{ p: 4, width: '100%', maxWidth: 400 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
           <GrassIcon color="primary" sx={{ fontSize: 32 }} />
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>NDVI Monitor</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, flexGrow: 1 }}>NDVI Monitor</Typography>
+          <ToggleButtonGroup
+            value={currentLang}
+            exclusive
+            onChange={(_, lang) => lang && i18n.changeLanguage(lang)}
+            size="small"
+          >
+            <ToggleButton value="fi">FI</ToggleButton>
+            <ToggleButton value="en">EN</ToggleButton>
+          </ToggleButtonGroup>
         </Box>
         <Typography variant="h6" sx={{ mb: 3 }}>{t('register')}</Typography>
         <Box component="form" onSubmit={handleSubmit}>

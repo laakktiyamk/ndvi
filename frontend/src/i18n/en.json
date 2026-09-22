@@ -43,7 +43,7 @@
   "email": "Email",
   "password": "Password",
   "register": "Register",
-  "login": "Login",
+  "login": "Login",  
   "username": "Username",
   "passwordAgain": "Password again",
   "noWeatherOpen": "No weather data. Open a field from the Fields page first.",

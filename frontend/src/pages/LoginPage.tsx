@@ -4,13 +4,14 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField,
   Button, Alert, CircularProgress, Link, Divider,
+  ToggleButton, ToggleButtonGroup,
 } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import { login } from '../services/authService';
 import { useAuthStore } from '../store/authStore';
 
 export default function LoginPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
   const [email, setEmail]       = useState('');
@@ -34,6 +35,8 @@ export default function LoginPage() {
     }
   };
 
+  const currentLang = i18n.language.startsWith('fi') ? 'fi' : 'en';
+
   return (
     <Box sx={{
       minHeight: '100vh',
@@ -46,7 +49,16 @@ export default function LoginPage() {
       <Paper sx={{ p: 4, width: '100%', maxWidth: 400 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
           <GrassIcon color="primary" sx={{ fontSize: 32 }} />
-          <Typography variant="h5" sx={{ fontWeight: 700 }}>NDVI Monitor</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, flexGrow: 1 }}>NDVI Monitor</Typography>
+          <ToggleButtonGroup
+            value={currentLang}
+            exclusive
+            onChange={(_, lang) => lang && i18n.changeLanguage(lang)}
+            size="small"
+          >
+            <ToggleButton value="fi">FI</ToggleButton>
+            <ToggleButton value="en">EN</ToggleButton>
+          </ToggleButtonGroup>
         </Box>
         <Typography variant="h6" sx={{ mb: 3 }}>{t('login')}</Typography>
         <Box component="form" onSubmit={handleSubmit}>
