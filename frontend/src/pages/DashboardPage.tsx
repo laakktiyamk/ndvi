@@ -18,9 +18,11 @@ import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useAppStore } from '../store/appStore';
 import { getNdviStatus } from '../utils/ndviStatus';
+import { useFormatters } from '../hooks/useFormatters';
 import WeatherSummaryPanel from '../components/dashboard/WeatherSummaryPanel';
 import CropStatisticsPanel from '../components/dashboard/CropStatisticsPanel';
 import NewFieldDialog from '../components/fields/NewFieldDialog';
+
 const CURRENT_YEAR = new Date().getFullYear();
 
 const NAV_CARDS = [
@@ -30,7 +32,8 @@ const NAV_CARDS = [
 ];
 
 export default function DashboardPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const fmt = useFormatters();
   const navigate = useNavigate();
   const {
     fields, fieldsFetched, fieldsLoading,
@@ -41,19 +44,6 @@ export default function DashboardPage() {
 
   const [newFieldOpen, setNewFieldOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | false>(false);
-  const [lang, setLang] = useState(i18n.language);
-
-  useEffect(() => {
-    const handler = (lng: string) => setLang(lng);
-    i18n.on('languageChanged', handler);
-    return () => i18n.off('languageChanged', handler);
-  }, [i18n]);
-
-  const fmt = (iso: string) =>
-    new Date(iso).toLocaleDateString(
-      lang === 'fi' ? 'fi-FI' : 'en-GB',
-      { day: 'numeric', month: 'numeric', year: 'numeric' }
-    );
 
   const handleAccordion = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded ? panel : false);
@@ -147,17 +137,17 @@ export default function DashboardPage() {
           <Grid size={{ xs: 6, sm: 3 }}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="caption" color="text.secondary">{t('fieldCount')}</Typography>
-              <Typography sx={{ fontWeight: 700, fontSize: '1.75rem' }}>{fields.length}</Typography>
-              <Typography variant="caption" color="text.secondary">kpl</Typography>
+              <Typography sx={{ fontWeight: 700, fontSize: '1.75rem' }}>{fmt.number(fields.length)}</Typography>
+              <Typography variant="caption" color="text.secondary">{t('unit.pcs')}</Typography>
             </Paper>
           </Grid>
           <Grid size={{ xs: 6, sm: 3 }}>
             <Paper sx={{ p: 2 }}>
               <Typography variant="caption" color="text.secondary">{t('totalArea')}</Typography>
               <Typography sx={{ fontWeight: 700, fontSize: '1.75rem' }}>
-                {(totalArea / 10000).toFixed(1)}
+                {fmt.number(totalArea / 10000, 1)}
               </Typography>
-              <Typography variant="caption" color="text.secondary">ha</Typography>
+              <Typography variant="caption" color="text.secondary">{t('unit.ha')}</Typography>
             </Paper>
           </Grid>
         </Grid>
@@ -178,9 +168,9 @@ export default function DashboardPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <GrassIcon color="primary" fontSize="small" />
               <Typography sx={{ fontWeight: 600 }}>{selectedField.name}</Typography>
-              {selectedField.area && (
+              {selectedField.area != null && (
                 <Typography variant="caption" color="text.secondary">
-                  {(selectedField.area / 10000).toFixed(2)} ha
+                  {fmt.hectares(selectedField.area / 10000)}
                 </Typography>
               )}
             </Box>
@@ -198,29 +188,33 @@ export default function DashboardPage() {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                     <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: status?.color }} />
                     <Typography sx={{ fontWeight: 700, fontSize: '1.5rem', color: status?.color }}>
-                      {latestEntry.stats.average.toFixed(3)}
+                      {fmt.number(latestEntry.stats.average, 3)}
                     </Typography>
                     <Chip label={status?.label} size="small"
                       sx={{ bgcolor: status?.color, color: '#fff', fontWeight: 600 }} />
                   </Box>
-                  <Typography variant="caption" color="text.secondary">{fmt(latestEntry.generationtime)}</Typography>
+                  <Typography variant="caption" color="text.secondary">{fmt.date(latestEntry.generationtime)}</Typography>
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Typography variant="caption" color="text.secondary">{t('trend')}</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                     {trend === null ? <Typography color="text.secondary">—</Typography>
-                      : trend > 0.02 ? <><TrendingUpIcon sx={{ color: '#2E7D32' }} /><Typography sx={{ color: '#2E7D32', fontWeight: 600 }}>+{trend.toFixed(3)}</Typography></>
-                      : trend < -0.02 ? <><TrendingDownIcon sx={{ color: '#C62828' }} /><Typography sx={{ color: '#C62828', fontWeight: 600 }}>{trend.toFixed(3)}</Typography></>
-                      : <><TrendingFlatIcon color="action" /><Typography color="text.secondary">{trend.toFixed(3)}</Typography></>
+                      : trend > 0.02 ? <><TrendingUpIcon sx={{ color: '#2E7D32' }} /><Typography sx={{ color: '#2E7D32', fontWeight: 600 }}>{fmt.signed(trend)}</Typography></>
+                      : trend < -0.02 ? <><TrendingDownIcon sx={{ color: '#C62828' }} /><Typography sx={{ color: '#C62828', fontWeight: 600 }}>{fmt.signed(trend)}</Typography></>
+                      : <><TrendingFlatIcon color="action" /><Typography color="text.secondary">{fmt.signed(trend)}</Typography></>
                     }
                   </Box>
-                  {prevEntry && <Typography variant="caption" color="text.secondary">vs. {fmt(prevEntry.generationtime)}</Typography>}
+                  {prevEntry && (
+                    <Typography variant="caption" color="text.secondary">
+                      {t('vsDate', { date: fmt.date(prevEntry.generationtime) })}
+                    </Typography>
+                  )}
                 </Grid>
 
                 <Grid size={{ xs: 12, sm: 4 }}>
                   <Typography variant="caption" color="text.secondary">{t('measurements')}</Typography>
-                  <Typography sx={{ fontWeight: 700, fontSize: '1.5rem', mt: 0.5 }}>{ndviEntries.length}</Typography>
+                  <Typography sx={{ fontWeight: 700, fontSize: '1.5rem', mt: 0.5 }}>{fmt.number(ndviEntries.length)}</Typography>
                   <Typography variant="caption" color="text.secondary">{t('satelliteImages')}</Typography>
                 </Grid>
               </Grid>
@@ -267,9 +261,7 @@ export default function DashboardPage() {
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <GrassIcon color="primary" fontSize="small" />
-              <Typography sx={{ fontWeight: 600 }}>
-                {t('cropStatistics', { defaultValue: 'Kasvilajit' })}
-              </Typography>
+              <Typography sx={{ fontWeight: 600 }}>{t('cropStatistics')}</Typography>
             </Box>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
@@ -277,7 +269,6 @@ export default function DashboardPage() {
           </AccordionDetails>
         </Accordion>
       )}
-
     </Box>
   );
 }

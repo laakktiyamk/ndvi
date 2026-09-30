@@ -1,19 +1,18 @@
 import { Router } from "express";
-import * as ndviControllers from "../controllers/ndviController"; // voitais ottaa erikseen controllerit {list, activate, image, weather, AOIs} jos halutaan
+import { processAOI, image, images } from "../controllers/ndviController";
 import { checkToken } from "../sentinelhub/sentinelhub_token";
 
 const router: Router = Router();
 
-// Routes
 // Protected routes (Require Sentinel Hub token verification)
-router.post("/dates", checkToken, ndviControllers.dates);
-//router.post("/activate", checkToken, ndviControllers.activate);
+router.post("/dates", checkToken, processAOI);
+//router.post("/activate", checkToken, activate);
 
-// Public or alternative routes (Do not require the checkToken middleware) because reading from MongoDB does not require a valid Sentinel Hub token
-router.get("/image/:sentinelid", ndviControllers.image);
-//router.post("/weather", ndviControllers.weather);
-//router.get("/aois", ndviControllers.AOIs);
+// Public routes (ei checkTokenia, koska MongoDB-luku ei tarvitse tokenia)
+router.get("/image/:sentinelid", image);
+//router.post("/weather", weather);
+//router.get("/aois", AOIs);
 
-router.post("/images", ndviControllers.images);
+router.post("/images", images);
 
 export default router;

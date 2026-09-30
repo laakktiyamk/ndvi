@@ -1,11 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import {
-  Box, Typography, Grid,
-} from '@mui/material';
+import { Box, Typography, Grid } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import {
   PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import { useFormatters } from '../../hooks/useFormatters';
 import type { ICropParcel } from '../../types';
 
 interface CropStatisticsPanelProps {
@@ -16,7 +15,7 @@ interface CropStatisticsPanelProps {
 
 interface CropSummary {
   kasvikoodi: string;
-  pinta_ala: number;       // ha
+  pinta_ala: number; // ha
   luomu: boolean;
 }
 
@@ -31,6 +30,7 @@ const hashColor = (kasvikoodi: string): string => {
 
 export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps) {
   const { t } = useTranslation();
+  const { hectares: formatHa, percent: formatPct } = useFormatters();
 
   // Kerätään kaikki kasvulohkot kaikilta pelloilta ja ryhmitellään kasvilajin mukaan
   const summaryMap = new Map<string, CropSummary>();
@@ -41,6 +41,7 @@ export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps
       const ha = kl.pinta_ala; // backend palauttaa jo hehtaareina
       if (existing) {
         existing.pinta_ala += ha;
+        if (kl.luomuviljely === '1') existing.luomu = true;
       } else {
         summaryMap.set(kl.kasvikoodi, {
           kasvikoodi: kl.kasvikoodi,
@@ -53,7 +54,11 @@ export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps
 
   const data = [...summaryMap.values()]
     .sort((a, b) => b.pinta_ala - a.pinta_ala)
-    .map((d) => ({ ...d, label: t(`crop:${d.kasvikoodi}`) }));
+    .map((d) => ({
+      ...d,
+      // defaultValue: tuntematon koodi näkyy koodina eikä "crop:123"
+      label: t(`crop:${d.kasvikoodi}`, { defaultValue: d.kasvikoodi }),
+    }));
 
   const totalHa = data.reduce((s, d) => s + d.pinta_ala, 0);
 
@@ -62,7 +67,7 @@ export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 1 }}>
         <GrassIcon fontSize="small" color="disabled" />
         <Typography variant="body2" color="text.secondary">
-          {t('noCropData') ?? 'Ei kasvilajitietoja'}
+          {t('cropStats.noData')}
         </Typography>
       </Box>
     );
@@ -85,22 +90,17 @@ export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps
               isAnimationActive={false}
             >
               {data.map((entry) => (
-                <Cell
-                  key={entry.kasvikoodi}
-                  fill={hashColor(entry.kasvikoodi)}
-                />
+                <Cell key={entry.kasvikoodi} fill={hashColor(entry.kasvikoodi)} />
               ))}
             </Pie>
             <Tooltip
               formatter={(value, name) => [
-                `${Number(value).toFixed(2)} ha (${((Number(value) / totalHa) * 100).toFixed(1)} %)`,
+                `${formatHa(Number(value))} (${formatPct(Number(value) / totalHa)})`,
                 name as string,
               ]}
             />
             <Legend
-              formatter={(value) => (
-                <span style={{ fontSize: 11 }}>{value}</span>
-              )}
+              formatter={(value) => <span style={{ fontSize: 11 }}>{value}</span>}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -110,10 +110,7 @@ export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps
       <Grid size={{ xs: 12, sm: 7 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, pt: 0.5 }}>
           {data.map((entry) => (
-            <Box
-              key={entry.kasvikoodi}
-              sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-            >
+            <Box key={entry.kasvikoodi} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Box
                 sx={{
                   width: 10,
@@ -125,13 +122,17 @@ export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps
               />
               <Typography variant="body2" sx={{ flex: 1, minWidth: 0 }} noWrap>
                 {entry.label}
-                {entry.luomu && ' 🌿'}
+                {entry.luomu && (
+                  <span role="img" aria-label={t('cropStats.organic')} title={t('cropStats.organic')}>
+                    {' 🌿'}
+                  </span>
+                )}
               </Typography>
               <Typography variant="body2" sx={{ fontWeight: 600, flexShrink: 0 }}>
-                {entry.pinta_ala.toFixed(2)} ha
+                {formatHa(entry.pinta_ala)}
               </Typography>
-              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, minWidth: 40, textAlign: 'right' }}>
-                {((entry.pinta_ala / totalHa) * 100).toFixed(1)} %
+              <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, minWidth: 48, textAlign: 'right' }}>
+                {formatPct(entry.pinta_ala / totalHa)}
               </Typography>
             </Box>
           ))}
@@ -139,13 +140,13 @@ export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5, pt: 0.5, borderTop: '1px solid', borderColor: 'divider' }}>
             <Box sx={{ width: 10, flexShrink: 0 }} />
             <Typography variant="body2" sx={{ flex: 1 }} color="text.secondary">
-              {t('total') ?? 'Yhteensä'}
+              {t('cropStats.total')}
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 700, flexShrink: 0 }}>
-              {totalHa.toFixed(2)} ha
+              {formatHa(totalHa)}
             </Typography>
-            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, minWidth: 40, textAlign: 'right' }}>
-              100 %
+            <Typography variant="caption" color="text.secondary" sx={{ flexShrink: 0, minWidth: 48, textAlign: 'right' }}>
+              {formatPct(1)}
             </Typography>
           </Box>
         </Box>

@@ -87,7 +87,7 @@
   "identifiedLocation": "Tunnistettu sijainti",
   "fetchingNdviDates": "Haetaan NDVI-päivämääriä...",
   "geoJsonIssues": "GeoJSON-ongelmat:",
-  "validGeoJson": "Validi GeoJSON",  
+  "validGeoJson": "Validi GeoJSON",
   "fetchNdviImages": "Hae NDVI-kuvat",
   "ndviOnMap": "NDVI satelliittikuva kartalla",
   "aoiLocation": "AOI:n sijainti",
@@ -166,10 +166,21 @@
   },
   "vegetationAvgLabel": "NDVI keskiarvo",
   "vegetationQuality": {
-  "poor": "Heikko",
-  "fair": "Tyydyttävä",
-  "good": "Hyvä",
-  "excellent": "Erinomainen"
+    "poor": "Heikko",
+    "fair": "Tyydyttävä",
+    "good": "Hyvä",
+    "excellent": "Erinomainen"
+  },
+  "cropStats": {
+    "noData": "Ei kasvilajitietoja",
+    "total": "Yhteensä",
+    "organic": "Luomuviljely"
+  },
+  "unit": {
+    "pcs": "kpl",
+    "ha": "ha",
+    "hectares": "{{value}} ha"
+  },
+  "vsDate": "vrt. {{date}}",
+  "cropStatistics": "Kasvilajit"
 }
-}
-

@@ -43,7 +43,7 @@
   "email": "Email",
   "password": "Password",
   "register": "Register",
-  "login": "Login",  
+  "login": "Login",
   "username": "Username",
   "passwordAgain": "Password again",
   "noWeatherOpen": "No weather data. Open a field from the Fields page first.",
@@ -166,9 +166,21 @@
   },
   "vegetationAvgLabel": "NDVI average",
   "vegetationQuality": {
-  "poor": "Poor",
-  "fair": "Fair",
-  "good": "Good",
-  "excellent": "Excellent"
-}
+    "poor": "Poor",
+    "fair": "Fair",
+    "good": "Good",
+    "excellent": "Excellent"
+  },
+  "cropStats": {
+    "noData": "No crop data",
+    "total": "Total",
+    "organic": "Organic farming"
+  },
+  "unit": {
+    "pcs": "pcs",
+    "ha": "ha",
+    "hectares": "{{value}} ha"
+  },
+  "vsDate": "vs. {{date}}",
+  "cropStatistics": "Crop types"
 }
