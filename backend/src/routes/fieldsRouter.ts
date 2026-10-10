@@ -4,6 +4,7 @@ import { fieldByLocation } from "../controllers/fieldByLocationController";
 import { fieldsByBbox } from "../controllers/fieldsByBboxController";
 import { cropParcelsByField } from "../controllers/cropParcelsByFieldController";
 import { getCropTypes } from "../controllers/cropTypeController";
+import { cropParcelsByGeometry } from "../controllers/cropParcelsByGeometryController";
 
 const router = Router();
 
@@ -14,5 +15,6 @@ router.get("/by-bbox", fieldsByBbox);        // ← uusi
 router.get("/crop-types", getCropTypes);
 router.delete('/:id', deleteField);
 router.get("/:peruslohkotunnus/crop-parcels", cropParcelsByField);
+router.post("/crop-parcels", cropParcelsByGeometry);
 
 export default router;

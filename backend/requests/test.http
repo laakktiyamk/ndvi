@@ -1,15 +1,15 @@
 ```http
 @baseUrl = http://localhost:8000
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YWEwODZmYzE1ZTdjM2IyZjA2NWE2MzQiLCJ1c2VybmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTc4ODkxMjczMiwiZXhwIjoxNzg4OTE2MzMyfQ.P-gnYCM1b_BaYc5DJfJSzERY50mLWpGfN8Md1C6YLr4
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2YWI1YmU5NzY5NWY1MjFjNDViMjZmYzEiLCJ1c2VybmFtZSI6Imhlc3N1IEhvcG8iLCJpYXQiOjE3OTEyNDgyOTcsImV4cCI6MTc5MTI1MTg5N30.a1CDuAiVz3whf1ed4ABSJPYUsTFNqxiuV6y08fA2up8
 
 ### REGISTER
 POST {{baseUrl}}/api/user/register
 Content-Type: application/json
 
 {
-  "email": "test@example.com",
-  "password": "TopSecret#123",
-  "username": "timo"
+  "email": "hessu@gmail.com",
+  "password": "Rytky#2026",
+  "username": "hessu Hopo"
 }
 
 ### LOGIN — get JWT token
@@ -17,8 +17,8 @@ POST {{baseUrl}}/api/user/login
 Content-Type: application/json
 
 {
-  "email": "test@gmail.com",
-  "password": "Top#secret26"
+  "email": "hessu@gmail.com",
+  "password": "Rytky#2026"
 }
 
 ### Get growing season
@@ -104,6 +104,32 @@ Content-Type: application/json
 {
   "geometryHash": "f18e29d28a39d54329d9d9cfe203d70f92e4562dec61edf11d542d8ac840f115"
 }
+
+
+### Get crop parcels by geometry
+
+POST {{baseUrl}}/api/fields/crop-parcels
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{ "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [24.019017492777, 64.233073829478],
+        [24.019347556527, 64.232990313561],
+        [24.019615315522, 64.232919904435],
+        [24.020482755912, 64.233076168492],   
+        [24.022361546928, 64.233414777739],
+        [24.022304933188, 64.233512300717],
+        [24.022162986048, 64.233683337832],
+        [24.020810232778, 64.233413298021],
+        [24.020072476793, 64.23327072941],
+        [24.019017492777, 64.233073829478]
+      ]
+    ]
+  }}
+
 
 ### GeoCode by text — Tampere
 GET {{baseUrl}}/api/geocode?text=Tampere

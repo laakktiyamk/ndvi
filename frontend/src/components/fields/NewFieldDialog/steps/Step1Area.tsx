@@ -9,7 +9,7 @@ import CodeIcon from '@mui/icons-material/Code';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloseIcon from '@mui/icons-material/Close';
 import NewFieldMap from '../NewFieldMap';
-import type { CropParcel } from '../types';
+import type { ICropParcel } from '../../../../types';
 
 interface Step1Props {
   searchText: string;
@@ -36,7 +36,7 @@ interface Step1Props {
   mapBounds: [[number, number], [number, number]] | null;
   mapRef: React.MutableRefObject<any>;
   foundField: any | null;
-  cropParcels: CropParcel[];
+  cropParcels: ICropParcel[];
   bboxFields: any[];
   onMapClick: (lat: number, lon: number) => void;
   onZoomChange: (zoom: number) => void;

@@ -15,7 +15,9 @@ import { useAppStore } from '../../../store/appStore';
 import Step1Area from './steps/Step1Area';
 import Step2Settings from './steps/Step2Settings';
 import Step3Loading from './steps/Step3Loading';
-import type { CropParcel, CropType, FieldInfo, Props } from './types';
+import type { CropType, FieldInfo, Props } from './types';
+import type { ICropParcel } from '../../../types';
+import { fetchCropParcelsByGeometry } from '../../../services/cropParcelsService';
 
 // ─── GeoJSON-bounds laskenta ──────────────────────────────────────────────────
 
@@ -72,7 +74,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [mapBounds, setMapBounds] = useState<[[number, number], [number, number]] | null>(null);
   const [foundField, setFoundField] = useState<any | null>(null);
-  const [cropParcels, setCropParcels] = useState<CropParcel[]>([]);
+  const [cropParcels, setCropParcels] = useState<ICropParcel[]>([]);
   const [cropColorMap, setCropColorMap] = useState<Map<string, string>>(new Map());
   const [searching, setSearching] = useState(false);
   const [clicking, setClicking] = useState(false);
@@ -145,10 +147,16 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   }, [foundField]);
 
   useEffect(() => {
-    if (!geojsonPreview) return;
-    setFoundField({ geometry: geojsonPreview, _fromGeojson: true });
-    setCropParcels([]);
-  }, [geojsonPreview]);
+  if (!geojsonPreview) return;
+  setFoundField({ geometry: geojsonPreview, _fromGeojson: true });
+  setCropParcels([]);
+
+  let cancelled = false;
+  fetchCropParcelsByGeometry(geojsonPreview)
+    .then((parcels) => { if (!cancelled) setCropParcels(parcels); })
+    .catch(() => {});
+  return () => { cancelled = true; };
+}, [geojsonPreview]);
 
   // ── Apufunktiot ───────────────────────────────────────────────────────────
 
@@ -257,7 +265,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       const text = await file.text();
       setGeojsonText(text);
       setGeojsonPanelOpen(true);
-      await validateAndPreview(text);
+      await validateAndPreview(text,true);
     } catch {
       setGeojsonError('Tiedoston lukeminen epäonnistui');
     }

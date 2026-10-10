@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect} from 'react';
 import { MapContainer, TileLayer, useMapEvents, Polygon, useMap, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import type { CropParcel } from './types';
+//import type { CropParcel } from './types';
+import type { ICropParcel } from '../../../types'; 
 
 // ─── MapZoomer ────────────────────────────────────────────────────────────────
 
@@ -57,7 +58,7 @@ interface NewFieldMapProps {
   mapRef: React.MutableRefObject<any>;
   foundField: any | null;
   geojsonPreview: any | null;
-  cropParcels: CropParcel[];
+  cropParcels: ICropParcel[];
   bboxFields: any[];
   geojsonPanelOpen: boolean;
   onMapClick: (lat: number, lon: number) => void;

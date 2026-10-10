@@ -57,7 +57,8 @@ export const getStatistics = async (
   geometry: Geometry,
   dateFrom: string,
   dateTo: string,
-  authToken: string
+  authToken: string,
+  throwOnError: boolean = false
 ): Promise<DayStatistics[]> => {
 
   const evalscript = `//VERSION=3
@@ -103,14 +104,16 @@ function evaluatePixel(s) {
 
   const { width, height } = await getWidthAndHeight(geometry);
 
-  try {
-    const result: AxiosResponse<{ data: DayStatistics[] }> = await axios({
+  // Yksi CDSE-pyyntö annetulle aikavälille. Palauttaa rivit sellaisenaan.
+  const requestRows = async (from: string, to: string): Promise<any[]> => {
+    const result: AxiosResponse<{ data: any[] }> = await axios({
       method: "post",
       url: "https://sh.dataspace.copernicus.eu/api/v1/statistics",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${authToken}`,
       },
+      timeout: 30000,
       data: {
         input: {
           bounds: { geometry },
@@ -122,7 +125,7 @@ function evaluatePixel(s) {
           ],
         },
         aggregation: {
-          timeRange: { from: dateFrom, to: dateTo },
+          timeRange: { from, to },
           aggregationInterval: { of: "P1D" },
           RESX: "10m",
           RESY: "10m",
@@ -144,8 +147,51 @@ function evaluatePixel(s) {
         },
       },
     });
+    return result.data.data ?? [];
+  };
 
-    return result.data.data.map((dayData: any): DayStatistics => {
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  try {
+    const raw = await requestRows(dateFrom, dateTo);
+
+    // CDSE palauttaa joskus rivin, jossa on error (esim. 3 s aikakatkaisu).
+    // Yritetään vain nämä päivät uudelleen yksitellen.
+    const rows: any[] = [];
+    for (const row of raw) {
+      if (!row?.error) { rows.push(row); continue; }
+
+      let fixed: any[] | null = null;
+      for (let attempt = 1; attempt <= 2 && !fixed; attempt++) {
+        await sleep(1000 * attempt);
+        try {
+          const retry = await requestRows(row.interval.from, row.interval.to);
+          if (retry.length > 0 && !retry.some((r: any) => r?.error)) fixed = retry;
+        } catch {
+          // yritetään uudelleen
+        }
+      }
+
+      if (fixed) {
+        console.log(`getStatistics: uudelleenyritys onnistui ${row.interval.from}`);
+        rows.push(...fixed);
+      } else {
+        console.log(`getStatistics: uudelleenyritys epäonnistui ${row.interval.from}`);
+        rows.push(row);   // jää suodattimen pudotettavaksi
+      }
+    }
+
+    // Suodatetaan rivit, joilta puuttuu NDVI-statistiikka
+    const days = rows.filter((d: any) => d?.outputs?.ndvi?.bands?.B0?.stats);
+    if (days.length < rows.length) {
+      const dropped = rows.find((d: any) => !d?.outputs?.ndvi?.bands?.B0?.stats);
+      console.log(
+        `getStatistics: ohitettu ${rows.length - days.length}/${rows.length} riviä ilman stats-dataa, esimerkki:`,
+        JSON.stringify(dropped).slice(0, 300)
+      );
+    }
+
+    return days.map((dayData: any): DayStatistics => {
       const bins: HistogramBin[] =
         dayData.outputs?.classBand?.bands?.B0?.histogram?.bins ?? [];
 
@@ -189,9 +235,6 @@ function evaluatePixel(s) {
 
       const ndviClassPercentages: number[] = floored;
 
-
-
-
       return {
         interval: dayData.interval,
         outputs: {
@@ -202,6 +245,7 @@ function evaluatePixel(s) {
     });
 
   } catch (err) {
+    if (throwOnError) throw err;
     if (axios.isAxiosError(err)) {
       console.error("Sentinel API error:", err.response?.data);
     } else {

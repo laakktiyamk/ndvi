@@ -1,5 +1,5 @@
 import { Schema } from "mongoose";
-import { localConnection } from "../connections";
+import { parcelConnection } from "../connections";
 
 const FieldParcelSchema = new Schema({
   tunnus:            { type: String },
@@ -18,5 +18,5 @@ const FieldParcelSchema = new Schema({
 FieldParcelSchema.index({ peruslohkotunnus: 1, vuosi: 1 }, { unique: true });
 FieldParcelSchema.index({ geometry: "2dsphere" });
 
-const FieldParcelModel = localConnection.model("FieldParcel", FieldParcelSchema);
+const FieldParcelModel = parcelConnection.model("FieldParcel", FieldParcelSchema);
 export { FieldParcelModel as FieldParcel };

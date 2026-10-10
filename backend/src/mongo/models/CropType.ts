@@ -1,5 +1,5 @@
 import { Schema } from "mongoose";
-import { localConnection } from "../connections";
+import { parcelConnection } from "../connections";
 
 const CropTypeSchema = new Schema({
   kasvikoodi:           { type: String, unique: true, index: true },  
@@ -8,5 +8,5 @@ const CropTypeSchema = new Schema({
   collection: "cropTypes",
 });
 
-const CropTypeModel = localConnection.model("CropType", CropTypeSchema);
+const CropTypeModel = parcelConnection.model("CropType", CropTypeSchema);
 export { CropTypeModel as CropType };

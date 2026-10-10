@@ -2,23 +2,16 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Atlas — users, ndvi-data yms.
+const uri = process.env.MONGO_AZURE_URI;
+if (!uri) throw new Error("MONGO_AZURE_URI puuttuu");
 
-/*
-export const atlasConnection = mongoose.createConnection(
-  process.env.MONGO_URI!
-);*/
+// Local/Azure — peltolohkot, kasvulohkot, ML_data
+export const parcelConnection = mongoose.createConnection(uri, {
+  maxPoolSize: 5,
+  serverSelectionTimeoutMS: 8000,
+});
 
-//console.log('Yhdistetään osoitteeseen:', process.env.MONGO_AZURE_URI);
+parcelConnection.on("connected", () => console.log("Parcel DB: connected"));
+parcelConnection.on("error", (err: Error) => console.error("Parcel DB error:", err));
 
-// Local — peltolohkot
-export const localConnection = mongoose.createConnection(
-  //process.env.MONGO_LOCAL_URI!  // mongodb://localhost:27017/ndvi
-  process.env.MONGO_AZURE_URI!
-);
-
-//atlasConnection.on("connected", () => console.log("Atlas: yhdistetty"));
-localConnection.on("connected", () => console.log("Local MongoDB: yhdistetty"));
-
-//atlasConnection.on("error", (err:string) => console.error("Atlas virhe:", err));
-localConnection.on("error", (err:string) => console.error("Local virhe:", err));
+export const ensureLocalConnected = () => parcelConnection.asPromise();

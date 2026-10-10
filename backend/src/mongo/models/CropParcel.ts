@@ -1,5 +1,5 @@
 import { Schema } from "mongoose";
-import { localConnection } from "../connections";
+import { parcelConnection } from "../connections";
 
 const CropParcelSchema = new Schema({
   tunnus:                { type: String },
@@ -21,5 +21,5 @@ CropParcelSchema.index({ peruslohkotunnus: 1, lohkonumero: 1, vuosi: 1 }, { uniq
 CropParcelSchema.index({ kasvikoodi: 1 });
 CropParcelSchema.index({ geometry: "2dsphere" });
 
-const CropParcelModel = localConnection.model("CropParcel", CropParcelSchema);
+const CropParcelModel = parcelConnection.model("CropParcel", CropParcelSchema);
 export { CropParcelModel as CropParcel };

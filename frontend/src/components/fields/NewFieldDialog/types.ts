@@ -1,12 +1,3 @@
-export interface CropParcel {
-  tunnus: string;
-  lohkonumero: string;
-  kasvikoodi: string;
-  pinta_ala: number;
-  luomuviljely: string;
-  geometry: any;
-}
-
 export interface CropType {
   kasvikoodi: string;
   color: string;

@@ -6,7 +6,7 @@ import { getUserId } from '../utils/getTokenUserId'
 import { IImage } from '../types'
 
 // ============================================================
-// processAOI (entinen dates)
+// processAOI — REST API: vastaanottaa AOI:n ja päivämäärät, hakee NDVI-tilastot ja kuvat 
 // ============================================================
 
 export const processAOI = async (req: SentinelRequest, res: Response, next: NextFunction): Promise<void> => {
@@ -43,7 +43,7 @@ export const processAOI = async (req: SentinelRequest, res: Response, next: Next
 }
 
 // ============================================================
-// Image handlers (ennallaan)
+// Image handlers 
 // ============================================================
 
 export const image = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
