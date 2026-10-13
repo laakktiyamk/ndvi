@@ -44,6 +44,7 @@ interface AppState {
 
   // ── UI-tila ──────────────────────────────────────
   newFieldAdded: boolean;
+  selectedYear: number | null; // UUSI: NDVI-kuvien ja sään yhteinen vuosi
 
   // ── Actionit ─────────────────────────────────────
   fetchFields: () => Promise<void>;
@@ -65,6 +66,7 @@ interface AppState {
   setValidGeoJson: (gj: object | null) => void;
   setStartDate: (d: string) => void;
   setNewFieldAdded: (v: boolean) => void;
+  setSelectedYear: (year: number | null) => void; // UUSI
   resetFields: () => void;
 }
 
@@ -96,6 +98,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   startDate: `${new Date().getFullYear()}-04-01`,
 
   newFieldAdded: false,
+  selectedYear: null, // UUSI
 
   fetchFields: async () => {
     if (get().fieldsFetched) return;
@@ -224,6 +227,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setValidGeoJson: (gj) => set({ validGeoJson: gj }),
   setStartDate: (d) => set({ startDate: d }),
   setNewFieldAdded: (v) => set({ newFieldAdded: v }),
+  setSelectedYear: (year) => set({ selectedYear: year }), // UUSI
 
   resetFields: () =>
     set({
@@ -242,6 +246,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       weatherError: null,
       startDate: `${new Date().getFullYear()}-04-01`,
       newFieldAdded: false,
+      selectedYear: null, // UUSI
     }),
 
   deleteField: async (id) => {

@@ -2,10 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import centroid from '@turf/centroid';
 import rewind from '@turf/rewind';
 import axios from 'axios';
-import jwt from 'jsonwebtoken';
 import { Geometry } from 'geojson';
 import * as mongodb from '../mongo/mongodb';
-import { getUserId } from '../utils/getTokenUserId'
 
 interface JwtPayload {
   _id: string;
@@ -55,7 +53,7 @@ const fetchRuokavirastoInfo = async (lat: number, lon: number): Promise<{
       const props = features[0].properties;
       return {
         fieldName: props?.lohkon_nimi || props?.LOHKON_NIMI || null,
-        cropType:  props?.kasvilaji   || props?.KASVILAJI   || null,
+        cropType: props?.kasvilaji || props?.KASVILAJI || null,
       };
     }
     return { fieldName: null, cropType: null };
@@ -72,16 +70,16 @@ export const getFieldInfo = async (
   next?: NextFunction
 ): Promise<void> => {
   console.log('req.body:', JSON.stringify(req.body).slice(0, 300));
-  
+
   let geometry: Geometry | null = null;
   try {
     const raw = typeof req.body.geometry === 'object'
       ? req.body.geometry
       : JSON.parse(req.body.geometry);
-    
+
     console.log('raw.type:', raw?.type);
     console.log('raw keys:', Object.keys(raw || {}));
-    
+
     geometry = rewind(raw, { mutate: false }) as unknown as Geometry;
   } catch (err) {
     console.error('parse/rewind error:', err);
@@ -109,7 +107,7 @@ export const getFieldInfo = async (
       centroid: { lat, lon },
       address,
       fieldName: ruokavirasto.fieldName,
-      cropType:  ruokavirasto.cropType,
+      cropType: ruokavirasto.cropType,
       name,
       geometry,
     });
@@ -125,13 +123,7 @@ export const getFields = async (
   next?: NextFunction
 ): Promise<void> => {
   try {
-    const userId = getUserId(req);
-    console.log('####### userId tokenista:', userId);
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-    console.log('Fetching fields for userId:', userId);
+    const userId = req.user!._id;
     const data = await mongodb.getAllDateSets(userId);
     res.status(200).json(data);
   } catch (err: unknown) {
@@ -146,16 +138,9 @@ export const deleteField = async (
   res: Response,
   next?: NextFunction
 ): Promise<void> => {
-
   try {
-    const userId = getUserId(req);
-    if (!userId) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
+    const userId = req.user!._id;
     const id = req.params.id as string;
-
     // Tarkistetaan että pelto kuuluu käyttäjälle
     const data = await mongodb.getDates(id);
     if (!data) {

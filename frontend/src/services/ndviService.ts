@@ -7,7 +7,7 @@ export interface DatesResponse {
   userIds: string[];
   area: number;
   dates: DateEntry[];
-  kasvulohkot?: ICropParcel[];  // ← lisäys
+  kasvulohkot?: ICropParcel[];
 }
 
 export const getDatesForGeometry = async (
@@ -15,14 +15,14 @@ export const getDatesForGeometry = async (
   startDate: string,
   endDate: string,
   name?: string,
-  cropParcels?: ICropParcel[]  // ← lisäys
+  cropParcels?: ICropParcel[]
 ): Promise<DatesResponse> => {
   const res = await apiClient.post<DatesResponse>('/api/ndvi/dates', {
     geometry,
     start_date: startDate,
     end_date: endDate,
     name,
-    kasvulohkot: cropParcels ?? [],  // ← lisäys
+    kasvulohkot: cropParcels ?? [],
   });
   return res.data;
 };

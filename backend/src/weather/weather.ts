@@ -19,6 +19,25 @@ export const getCentroid = (geometry: Geometry): { lat: number; lon: number } =>
   return { lat, lon };
 };
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// 429 ja palvelinvirheet yritetään uudelleen odotusta pidentäen
+const fetchWithRetry = async (url: string, params: any, maxAttempts = 5) => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const response = await axios.get(url, { params, timeout: 30000 });
+      return response.data;
+    } catch (err) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      const retryable = !status || status === 429 || status >= 500;
+      if (!retryable || attempt >= maxAttempts) throw err;
+      const wait = 2000 * 2 ** (attempt - 1) + Math.random() * 1000;
+      console.log(`Weather: retry ${attempt}/${maxAttempts - 1} in ${Math.round(wait)} ms (status ${status ?? 'network'})`);
+      await sleep(wait);
+    }
+  }
+};
+
 export const getWeatherData = async (
   geometry: Geometry,
   startDate: Date,
@@ -39,19 +58,13 @@ export const getWeatherData = async (
 
   console.log(`Weather: fetching ${formatDate(startDate)} → ${formatDate(safeEndDate)}`);
 
-  const response = await axios.get(
-    "https://archive-api.open-meteo.com/v1/archive",
-    {
-      params: {
-        latitude: lat,
-        longitude: lon,
-        start_date: formatDate(startDate),
-        end_date: formatDate(safeEndDate),        
-        daily: "temperature_2m_mean,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,precipitation_sum,shortwave_radiation_sum,et0_fao_evapotranspiration,wind_speed_10m_mean",
-        timezone: "UTC",
-      },
-    }
-  );
-
-  return response.data;
+    return await fetchWithRetry("https://archive-api.open-meteo.com/v1/archive", {
+    latitude: lat,
+    longitude: lon,
+    start_date: formatDate(startDate),
+    end_date: formatDate(safeEndDate),
+    daily: "temperature_2m_mean,temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,precipitation_sum,shortwave_radiation_sum,et0_fao_evapotranspiration,wind_speed_10m_mean",
+    timezone: "UTC",
+  });
+ 
 };

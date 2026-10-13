@@ -116,7 +116,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const fmt = getFmt(i18n.language);
 
   const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  //const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -138,7 +138,8 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   // ── Filmroll-dialogi ──────────────────────────────
   const [filmrollOpen, setFilmrollOpen] = useState(false);
 
-  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData, cropParcels } = useAppStore();
+  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData, cropParcels, setSelectedYear } = useAppStore();
+  const selectedYear = useAppStore(s => s.selectedYear) ?? currentYear;
 
   const loading = imagesLoading && activeGeometryHash !== fieldId;
   const error = imagesError;
@@ -177,7 +178,12 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
     if (allEntries.length === 0) return;
     const years = [...new Set(allEntries.map(e => getYear(e.generationtime)))].sort((a, b) => b - a);
     setAvailableYears(years);
-    setSelectedYear(years[0]);
+
+    // Asetetaan uusin vuosi vain jos vuotta ei ole valittu tai se ei löydy tämän pellon vuosista
+    const stored = useAppStore.getState().selectedYear;
+    if (stored === null || !years.includes(stored)) {
+      setSelectedYear(years[0]);
+    }
   }, [allEntries.length]);
 
   useEffect(() => {

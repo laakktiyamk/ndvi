@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
-import { SentinelRequest } from '../sentinelhub/sentinelhub_token'
+import type { SentinelRequest } from '../sentinelhub/sentinelhub_token'
 import { syncAOI } from '../services/ndviService'
 import * as mongodb from '../mongo/mongodb'
-import { getUserId } from '../utils/getTokenUserId'
 import { IImage } from '../types'
 
 // ============================================================
@@ -28,8 +27,8 @@ export const processAOI = async (req: SentinelRequest, res: Response, next: Next
       geometry,
       new Date(req.body.start_date),
       authToken,
-      req.body.name ?? '',
-      getUserId(req),
+      req.body.name ?? '',      
+      req.user!._id,  
       req.body.kasvulohkot ?? []
     )
     console.log('Request handled in (sec): ', (performance.now() - startTime) / 1000)

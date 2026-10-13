@@ -19,7 +19,7 @@ export const weatherAll = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-
+/*
 export const weather = async (req: Request, res: Response): Promise<void> => {
   const { sentinelid } = req.body;
   const data = await mongodb.getWeather(sentinelid);
@@ -30,3 +30,4 @@ export const weather = async (req: Request, res: Response): Promise<void> => {
     res.status(404).json({ error: "no weather data found" });
   }
 };
+*/

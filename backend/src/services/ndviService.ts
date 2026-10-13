@@ -2,7 +2,7 @@ import rewind from '@turf/rewind'
 import * as hash from '../utils/hash'
 import * as dateTime from '../utils/dateTime'
 import * as mongodb from '../mongo/mongodb'
-//import { MlData } from '../mongo/models/MlData'
+import { MlData } from '../mongo/models/MlData'
 import { getStatistics } from '../sentinelhub/getStatistics_CDSE'
 import { getImage } from '../sentinelhub/getImage_CDSE'
 import * as imageDataRef from '../utils/image/getImageData'
@@ -66,7 +66,7 @@ export interface SeasonCount {
 }
 
 // ============================================================
-// Concurrency limiter (REST API käyttää, Step Functions ei)
+// Concurrency limiter
 // ============================================================
 
 function createLimit(concurrency: number) {
@@ -145,9 +145,9 @@ export const getSentinelDates = async (
 }
 
 // ============================================================
-// getSentinelDatesBySeason — ML-ajo: haetaan kasvukausi kerrallaan
-// rinnakkain, ei talvia. Palauttaa myös havaintomäärät kausittain.
-// Epäonnistunut kausi heittää virheen (ei tulkita "ei dataa" -tilaksi).
+// getSentinelDatesBySeason — hakee annetut jaksot rinnakkain.
+// Palauttaa myös havaintomäärät jaksoittain (ML käyttää).
+// Epäonnistunut jakso heittää virheen (ei tulkita "ei dataa" -tilaksi).
 // ============================================================
 
 export const getSentinelDatesBySeason = async (
@@ -158,12 +158,9 @@ export const getSentinelDatesBySeason = async (
 ): Promise<{ dates: SentinelDate[]; seasonCounts: SeasonCount[] }> => {
   const limit = createLimit(concurrency)
 
-  const startTime = performance.now();
-  
   const settled = await Promise.allSettled(
     seasons.map(s => limit(() => getSentinelDates(geometry, s.start, s.end, authToken, true)))
   )
-  console.log("ML Dates elapsedTime (sec): ", (performance.now() - startTime) / 1000);
 
   const dates: SentinelDate[] = []
   const seasonCounts: SeasonCount[] = []
@@ -221,7 +218,6 @@ const getSentinelDatesForRange = async (
   }
 }
 
-
 // ============================================================
 // fetchAndSaveImage — hakee yhden kuvan ja tallentaa
 // Step Functions processor Lambda käyttää tätä
@@ -258,11 +254,12 @@ const fetchAndSaveImages = async (
   dates: SentinelDate[],
   geometry: any,
   authToken: string
-): Promise<void> => {
+): Promise<SentinelDate[]> => {
   const limit = createLimit(5)
-  await Promise.all(
+  const results = await Promise.all(
     dates.map(item => limit(() => fetchAndSaveImage(item, geometry, authToken)))
   )
+  return dates.filter((_, i) => results[i])
 }
 
 // ============================================================
@@ -287,7 +284,7 @@ export const fetchWeather = async (
 
 export const fetchAndSaveDates = async (
   geometry: any,
-  fromTime: Date | null,
+  fromTime: Date,
   toTime: Date,
   authToken: string,
   name: string = '',
@@ -297,28 +294,24 @@ export const fetchAndSaveDates = async (
 ): Promise<SentinelDate[]> => {
   const id = hash.sha256(geometry)
   const area = geoUtils.getAreaFromGeometry(geometry)
-
   const existing = await mongodb.getDates(id)
+
   if (!existing) {
     await mongodb.saveDates(id, [], geometry, area ?? 0, name, userId, kasvulohkot)
   }
 
-  const startTime = performance.now();
-  //const dates = await getSentinelDates(geometry, fromTime, toTime, authToken)
   const dates = await getSentinelDatesForRange(geometry, fromTime, toTime, authToken)
-
   console.log(dates.length, 'dates fetched')
-  console.log("DATES elapsedTime (sec): ", (performance.now() - startTime) / 1000);
   if (dates.length === 0) return []
 
+  // MUUTOS: tallennetaan vain päivämäärät, joiden kuva onnistui
+  let datesToSave: SentinelDate[] = dates
   if (saveImages) {
-    const startTime = performance.now();
-    await fetchAndSaveImages(dates, geometry, authToken)
-    console.log("IMAGES elapsedTime (sec): ", (performance.now() - startTime) / 1000);
+    datesToSave = await fetchAndSaveImages(dates, geometry, authToken)
   }
 
   const savedDates = dateTime.sortByDateTime(
-    dates.map(({ ndviClassPercentages, ...rest }) => rest),
+    datesToSave.map(({ ndviClassPercentages, ...rest }) => rest),   // MUUTOS: dates -> datesToSave
     'generationtime',
     'desc'
   )
@@ -330,7 +323,7 @@ export const fetchAndSaveDates = async (
     await mongodb.updateDates(id, newDates, userId)
   }
 
-  return dates
+  return datesToSave   // palautetaan vain onnistuneet
 }
 
 // ============================================================
@@ -348,7 +341,6 @@ export const syncDates = async (
   kasvulohkot: any[] = [],
   saveImages: boolean = true
 ): Promise<SyncDatesResult | null> => {
-  
   const normalizedGeometry = rewind(geometry, { mutate: false })
   const id = hash.sha256(normalizedGeometry)
 
@@ -383,9 +375,6 @@ export const syncDates = async (
       )
     }
 
-  //console.log('Dates handled in (sec): ', (performance.now() - startTime) / 1000)
-  console.log('New dates fetched:', newDates.length, 'for geometry', id)
-
     if (kasvulohkot.length > 0 && (!existing.kasvulohkot || existing.kasvulohkot.length === 0)) {
       await mongodb.saveDates(id, existing.dates, normalizedGeometry, existing.area ?? 0, name || existing.name, userId, kasvulohkot)
     } else if ((name && !existing.name) || (userId && !existing.userIds?.includes(userId))) {
@@ -393,12 +382,8 @@ export const syncDates = async (
     }
   }
 
-
-
   return { geometry: normalizedGeometry, seasons, newDates }
 }
-
-// toteutetaan lambdana AWS serverless - Step Functions kutsuu tätä, ei REST API
 
 // ============================================================
 // syncMlDates — ML-ajo: hakee NDVI-tilastot kausi kerrallaan ja
@@ -406,14 +391,14 @@ export const syncDates = async (
 // Jo haettua AOI:ta ei haeta uudelleen (ajon voi toistaa turvallisesti).
 // ============================================================
 
-/*
 export const syncMlDates = async (
   geometry: any,
   startDate: Date,
   endDate: Date,
   authToken: string,
   batchId: string = '',
-  kasvulohkot: any[] = []
+  kasvulohkot: any[] = [],
+  meta: { peruslohkotunnus?: string; vuosi?: string; pinta_ala?: number } = {}
 ): Promise<{ geometry: any; seasons: Season[] } | null> => {
   const normalizedGeometry = rewind(geometry, { mutate: false })
   const geometryHash = hash.sha256(normalizedGeometry)
@@ -422,24 +407,28 @@ export const syncMlDates = async (
   const seasons = getGrowingSeasons(startDate.getUTCFullYear(), endDate.getUTCFullYear())
   if (seasons.length === 0) return null
 
+  console.log('syncMlDates: findOne')
   const existing: any = await MlData.findOne({ geometryHash }).select('dates').lean()
+  console.log('syncMlDates: findOne done', existing?.dates?.length ?? 0)
   const alreadyFetched = (existing?.dates?.length ?? 0) > 0
 
   if (!alreadyFetched) {
+    console.log('syncMlDates: stats')
     const { dates, seasonCounts } = await getSentinelDatesBySeason(
       normalizedGeometry, seasons, authToken
     )
+    console.log('syncMlDates: stats done', dates.length)
     if (dates.length === 0) return null   // ei kirjoiteta tyhjää dokumenttia
 
     await MlData.updateOne(
       { geometryHash },
-      { $set: { geometryHash, batchId, geometry: normalizedGeometry, kasvulohkot, dates, seasonCounts } },
+      { $set: { geometryHash, batchId, geometry: normalizedGeometry, kasvulohkot, dates, seasonCounts, ...meta } },
       { upsert: true }
     )
   }
 
   return { geometry: normalizedGeometry, seasons }
-}*/
+}
 
 // ============================================================
 // syncAOI — REST API orkestroija
@@ -464,9 +453,7 @@ export const syncAOI = (
   const promise = syncDates(geometry, startDate, authToken, name, userId, kasvulohkot, true)
     .then(async (result) => {
       if (!result) return null
-      const startTime = performance.now();
       await fetchWeather(result.geometry, result.seasons)
-      console.log("WEATHER ElapsedTime (sec): ", (performance.now() - startTime) / 1000);
       return await mongodb.getDates(hash.sha256(result.geometry))
     })
     .finally(() => inFlight.delete(id))

@@ -73,13 +73,19 @@ export default function WeatherPage() {
   const activeField = fields.find(f => f.id === activeGeometryHash);
 
   const currentYear = new Date().getFullYear();
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  const storedYear = useAppStore(s => s.selectedYear);
+  const setSelectedYear = useAppStore(s => s.setSelectedYear);
   const [selectedVar, setSelectedVar] = useState<VarKey>('temperature_2m_mean');
 
   const availableYears = useMemo(() => {
     const years = [...new Set(weatherData.map(w => getYear(w.date)))].sort((a, b) => b - a);
     return years.length > 0 ? years : [currentYear];
   }, [weatherData]);
+
+   const selectedYear =
+    storedYear !== null && availableYears.includes(storedYear)
+      ? storedYear
+      : availableYears[0];
 
   const chartData = useMemo(() => {
     return weatherData

@@ -11,7 +11,7 @@ const router = Router();
 router.get('/', getFields);
 router.post('/info', getFieldInfo);
 router.get("/by-location", fieldByLocation);
-router.get("/by-bbox", fieldsByBbox);        // ← uusi
+router.get("/by-bbox", fieldsByBbox);
 router.get("/crop-types", getCropTypes);
 router.delete('/:id', deleteField);
 router.get("/:peruslohkotunnus/crop-parcels", cropParcelsByField);

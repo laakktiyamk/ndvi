@@ -1,8 +1,8 @@
-import { Router } from 'express';
-import { geocode } from '../controllers/geocodeController';
+    import { Router } from 'express';
+    import { geocode } from '../controllers/geocodeController';
 
-const router = Router();
+    const router = Router();
 
-router.get('/', geocode);
+    router.get('/', geocode);
 
-export default router;
+    export default router;
