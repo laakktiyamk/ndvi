@@ -10,7 +10,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
-import { apiClient } from '../../../api/client';
+import { apiClient, getToken } from '../../../api/client';
 import { useAppStore } from '../../../store/appStore';
 import Step1Area from './steps/Step1Area';
 import Step2Settings from './steps/Step2Settings';
@@ -18,6 +18,13 @@ import Step3Loading from './steps/Step3Loading';
 import type { CropType, FieldInfo, Props } from './types';
 import type { ICropParcel } from '../../../types';
 import { fetchCropParcelsByGeometry } from '../../../services/cropParcelsService';
+
+
+import { USE_PIPELINE } from '../../../config';
+import { startProcess } from '../../../services/ndviService';
+import { useJobProgress } from '../../../hooks/useJobProgress';
+
+
 
 // ─── GeoJSON-bounds laskenta ──────────────────────────────────────────────────
 
@@ -94,11 +101,17 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Vaihe 2 ───────────────────────────────────────────────────────────────
+    // ── Vaihe 2 ───────────────────────────────────────────────────────────────
   const [fieldInfo, setFieldInfo] = useState<FieldInfo | null>(null);
   const [fieldInfoLoading, setFieldInfoLoading] = useState(false);
   const [customName, setCustomName] = useState('');
   const [noDataFound, setNoDataFound] = useState(false);
   const [submitError, setSubmitError] = useState('');
+
+  // ── Putki (AWS) ───────────────────────────────────────────────────────────
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [aoiIds, setAoiIds] = useState<string[]>([]);
+  const { job } = useJobProgress(jobId, jobId ? getToken() : null);
 
   // ── endDate kasvukauden mukaan ────────────────────────────────────────────
   const today = new Date().toISOString().split('T')[0];
@@ -123,7 +136,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
         );
         setCropColorMap(map);
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -143,20 +156,20 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setCropParcels([]);
     apiClient.get(`/api/fields/${foundField.peruslohkotunnus}/crop-parcels`)
       .then((res) => setCropParcels(res.data))
-      .catch(() => {});
+      .catch(() => { });
   }, [foundField]);
 
   useEffect(() => {
-  if (!geojsonPreview) return;
-  setFoundField({ geometry: geojsonPreview, _fromGeojson: true });
-  setCropParcels([]);
+    if (!geojsonPreview) return;
+    setFoundField({ geometry: geojsonPreview, _fromGeojson: true });
+    setCropParcels([]);
 
-  let cancelled = false;
-  fetchCropParcelsByGeometry(geojsonPreview)
-    .then((parcels) => { if (!cancelled) setCropParcels(parcels); })
-    .catch(() => {});
-  return () => { cancelled = true; };
-}, [geojsonPreview]);
+    let cancelled = false;
+    fetchCropParcelsByGeometry(geojsonPreview)
+      .then((parcels) => { if (!cancelled) setCropParcels(parcels); })
+      .catch(() => { });
+    return () => { cancelled = true; };
+  }, [geojsonPreview]);
 
   // ── Apufunktiot ───────────────────────────────────────────────────────────
 
@@ -265,7 +278,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       const text = await file.text();
       setGeojsonText(text);
       setGeojsonPanelOpen(true);
-      await validateAndPreview(text,true);
+      await validateAndPreview(text, true);
     } catch {
       setGeojsonError('Tiedoston lukeminen epäonnistui');
     }
@@ -310,6 +323,8 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setNoDataFound(false);
     setSubmitError('');
     setFetchError('');
+    setJobId(null);
+    setAoiIds([]);
   };
 
   const handleSubmit = async () => {
@@ -320,6 +335,22 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setActiveStep(2);
 
     const name = customName || fieldInfo?.name || '';
+
+    if (USE_PIPELINE) {
+      try {
+        const res = await startProcess(
+          [{ geometry: foundField.geometry, name, kasvulohkot: cropParcels }],
+          startDate,
+          endDate,
+        );
+        setAoiIds(res.aoiIds);
+        setJobId(res.jobId);
+      } catch {
+        setFetchError(t('fetchError') || 'Haku epäonnistui');
+      }
+      return;
+    }
+
     const newId = await fetchImagesForGeometry(
       foundField.geometry,
       startDate,
@@ -362,11 +393,29 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setNoDataFound(false);
     setSubmitError('');
     setFetchError('');
+    setJobId(null);
+    setAoiIds([]);
     setCurrentZoom(5);
     setBboxFields([]);
     setBboxActive(false);
     onClose();
   };
+
+  useEffect(() => {
+    if (!jobId || !job || job.status === 'running') return;
+
+    if (job.status === 'failed') {
+      setFetchError(t('fetchError') || 'Haku epäonnistui');
+      return;
+    }
+
+    useAppStore.setState({ fieldsFetched: false });
+    setSelectedField(aoiIds[0]);
+    setNewFieldAdded(true);
+    handleClose();
+    navigate('/fields');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -413,7 +462,8 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       noDataFound={noDataFound}
       submitError={submitError}
     />,
-    <Step3Loading fetchError={fetchError} onBack={handleBack} />,
+    <Step3Loading fetchError={fetchError} onBack={handleBack} progress={job} />
+    
   ][activeStep];
 
   return (
@@ -474,17 +524,17 @@ export default function NewFieldDialog({ open, onClose }: Props) {
               activeStep === 0
                 ? <Button size="small" onClick={handleClose}>{t('cancel')}</Button>
                 : <Button size="small" onClick={handleBack} startIcon={<KeyboardArrowLeftIcon />}>
-                    {t('back')}
-                  </Button>
+                  {t('back')}
+                </Button>
             }
             nextButton={
               activeStep === 0
                 ? <Button size="small" onClick={handleNext} disabled={!foundField} endIcon={<KeyboardArrowRightIcon />}>
-                    {t('next')}
-                  </Button>
+                  {t('next')}
+                </Button>
                 : <Button size="small" variant="contained" onClick={handleSubmit} disabled={imagesLoading}>
-                    {t('fetchNdviImages') || 'Hae kuvat'}
-                  </Button>
+                  {t('fetchNdviImages') || 'Hae kuvat'}
+                </Button>
             }
           />
         ) : (

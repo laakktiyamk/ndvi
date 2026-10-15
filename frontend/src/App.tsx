@@ -14,6 +14,7 @@ import FieldsPage from './pages/FieldsPage';
 import WeatherPage from './pages/WeatherPage';
 import AnalysisPage from './pages/AnalysisPage';
 
+
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000, retry: 1 } },
 });
