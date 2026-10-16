@@ -401,7 +401,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     onClose();
   };
 
-  useEffect(() => {
+    useEffect(() => {
     if (!jobId || !job || job.status === 'running') return;
 
     if (job.status === 'failed') {
@@ -409,11 +409,22 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       return;
     }
 
-    useAppStore.setState({ fieldsFetched: false });
-    setSelectedField(aoiIds[0]);
-    setNewFieldAdded(true);
-    handleClose();
-    navigate('/fields');
+    const finish = async () => {
+      useAppStore.setState({ fieldsFetched: false, activeGeometryHash: null });
+      await useAppStore.getState().fetchFields();
+
+      const newField = useAppStore.getState().fields.find((f) => f.id === aoiIds[0]);
+      setSelectedField(aoiIds[0]);
+      if (newField) {
+        await useAppStore.getState().fetchImagesForField(newField, startDate, endDate);
+      }
+
+      setNewFieldAdded(true);
+      handleClose();
+      navigate('/fields');
+    };
+    
+    void finish();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job]);
 

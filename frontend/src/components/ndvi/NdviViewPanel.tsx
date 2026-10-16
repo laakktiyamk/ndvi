@@ -29,13 +29,6 @@ interface Props {
 
 type TabKey = 'chart' | 'yearcompare' | 'statistics' | 'onmap' | 'location';
 
-const fmt = (date: string) =>
-  new Date(date).toLocaleDateString('fi-FI', {
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric',
-  });
-
 export default function NdviViewPanel({
   fieldId,
   fieldName,
@@ -49,9 +42,16 @@ export default function NdviViewPanel({
   selectedTunnus = null,
   onSelectField,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [tab, setTab] = useState<TabKey>('chart');
   const { weatherData, imagesLoading, imagesError, activeGeometryHash } = useAppStore();
+
+  const fmt = (date: string) =>
+    new Date(date).toLocaleDateString(i18n.language === 'fi' ? 'fi-FI' : 'en-GB', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+    });
 
   const loading = imagesLoading && activeGeometryHash !== fieldId;
   const currentWeather = weatherData.find(w => w.sentinelid === entry.sentinelid);

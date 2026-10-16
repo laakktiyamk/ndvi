@@ -1,19 +1,24 @@
-import crypto from "crypto";
+  import crypto from "crypto";
 
-/**
- * Calculates the SHA-256 hash of a given geometry object or string.
- * @param {unknown | string} geometry - The geometry object or string.
- * @returns {string} The SHA-256 hash.
- */
-export const sha256 = (geometry: unknown | string): string => {
-  let jsonString: string;
-  
-  if (typeof geometry !== "string") {
-    jsonString = JSON.stringify(geometry);
-  } else {
-    jsonString = geometry;
-  }
-  
-  const hash = crypto.createHash("sha256").update(jsonString).digest("hex");
-  return hash;
-};
+  /**
+   * Calculates the SHA-256 hash of a given geometry object or string.
+   * @param {unknown | string} geometry - The geometry object or string.
+   * @returns {string} The SHA-256 hash.
+   */
+  export const sha256 = (geometry: unknown | string): string => {
+    let jsonString: string;
+    
+    if (typeof geometry !== "string") {
+      jsonString = JSON.stringify(geometry);
+    } else {
+      jsonString = geometry;
+    }
+    
+    const hash = crypto.createHash("sha256").update(jsonString).digest("hex");
+    return hash;
+  };
+
+  import rewind from "@turf/rewind";
+
+  export const geometryHash = (geometry: any): string =>
+    sha256(rewind(geometry, { mutate: false }));

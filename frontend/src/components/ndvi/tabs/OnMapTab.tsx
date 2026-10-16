@@ -22,9 +22,6 @@ interface Props {
   onSelectField?: (tunnus: string | null) => void;
 }
 
-const fmt = (date: string) =>
-  new Date(date).toLocaleDateString('fi-FI', { day: 'numeric', month: 'numeric', year: 'numeric' });
-
 // Erillinen karttakomponentti — voidaan mountata sekä normaaliin että dialogiin
 function NdviMap({
   entry, padding = [20, 20], zoomOut = 0,
@@ -154,9 +151,14 @@ function NdviMap({
 export default function OnMapTab({
   entry, cropParcels = [], selectedTunnus = null, onSelectField,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const image = entry.image;
+
+  const fmt = (date: string) =>
+    new Date(date).toLocaleDateString(i18n.language === 'fi' ? 'fi-FI' : 'en-GB', {
+      day: 'numeric', month: 'numeric', year: 'numeric',
+    });
 
   if (!image) {
     return <Alert severity="info" sx={{ m: 2 }}>{t('noMapData')}</Alert>;
