@@ -146,7 +146,7 @@ export default function Step1Area({
             size="small"
             value={geojsonText}
             onChange={(e) => onGeojsonChange(e.target.value)}
-            placeholder={'{ "type": "Polygon", "coordinates": [...] }'}
+            placeholder={'{ "type": "Polygon" | "MultiPolygon", "coordinates": [...] }\n\nor\n\n{ "name": "Field 1", "geometry": { ... } }'}
             error={!!geojsonError}
             slotProps={{ input: { sx: { fontFamily: 'monospace', fontSize: '0.75rem' } } }}
           />
@@ -157,7 +157,7 @@ export default function Step1Area({
           {geojsonValidating && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <CircularProgress size={14} />
-              <Typography variant="caption" color="text.secondary">Validoidaan...</Typography>
+              <Typography variant="caption" color="text.secondary">{t('validating')}</Typography>
             </Box>
           )}
         </Box>

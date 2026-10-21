@@ -104,9 +104,32 @@ function evaluatePixel(s) {
 
   const { width, height } = await getWidthAndHeight(geometry);
 
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Uusii CDSE:n ruuhkavirheet (429) ja tilapäiset palveluvirheet (503).
+  // Odotus: suurempi arvo Retry-After-otsikosta (ms) ja porrastetusta odotuksesta,
+  // lisättynä pienellä satunnaisuudella. Muita virheitä (esim. 400, 403) ei uusita.
+  const withRetry = async <T>(fn: () => Promise<T>, attempts = 4): Promise<T> => {
+    for (let i = 1; ; i++) {
+      try {
+        return await fn();
+      } catch (err: any) {
+        const status = err?.response?.status;
+        if (i >= attempts || (status !== 429 && status !== 503)) throw err;
+        const retryAfter = Number(err?.response?.headers?.["retry-after"]) || 0; // ms
+        const backoff = 1000 * 2 ** (i - 1);
+        const wait = Math.min(Math.max(retryAfter, backoff), 10000) + Math.random() * 500;
+        console.warn(
+          `getStatistics: HTTP ${status}, uusinta ${i}/${attempts - 1} ${Math.round(wait)} ms kuluttua`
+        );
+        await sleep(wait);
+      }
+    }
+  };
+
   // Yksi CDSE-pyyntö annetulle aikavälille. Palauttaa rivit sellaisenaan.
   const requestRows = async (from: string, to: string): Promise<any[]> => {
-    const result: AxiosResponse<{ data: any[] }> = await axios({
+    const result: AxiosResponse<{ data: any[] }> = await withRetry(() => axios({
       method: "post",
       url: "https://sh.dataspace.copernicus.eu/api/v1/statistics",
       headers: {
@@ -146,11 +169,9 @@ function evaluatePixel(s) {
           },
         },
       },
-    });
+    }));
     return result.data.data ?? [];
   };
-
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
   try {
     const raw = await requestRows(dateFrom, dateTo);

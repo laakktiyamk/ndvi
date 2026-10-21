@@ -9,7 +9,7 @@ interface Step3Props {
 
 export default function Step3Loading({ fetchError, onBack, progress }: Step3Props) {
   const { t } = useTranslation();
-
+  
   const processed = progress ? progress.done + progress.failed : 0;
   const percent = progress && progress.total > 0
     ? Math.round((processed / progress.total) * 100)

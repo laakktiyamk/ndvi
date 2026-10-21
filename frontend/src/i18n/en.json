@@ -182,5 +182,10 @@
     "hectares": "{{value}} ha"
   },
   "vsDate": "vs. {{date}}",
-  "cropStatistics": "Crop types"
+  "cropStatistics": "Crop types",  
+  "fieldsCount_one": "{{count}} field",
+  "fieldsCount_other": "{{count}} fields",
+  "unnamedField": "(unnamed)",
+  "failed": "failed",
+  "cdseLimitError": "Fetching failed. The Copernicus (CDSE) data service may have reached its usage quota or request limit. Please try again later."
 }

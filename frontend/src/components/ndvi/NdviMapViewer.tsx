@@ -392,7 +392,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
               width: '100%', height: '100%',
               objectFit: 'contain',
               pointerEvents: 'none',
-              filter: 'blur(1px)',
+              imageRendering: 'auto',
             }}
           />
         )}

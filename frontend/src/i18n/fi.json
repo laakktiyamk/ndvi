@@ -182,5 +182,10 @@
     "hectares": "{{value}} ha"
   },
   "vsDate": "vrt. {{date}}",
-  "cropStatistics": "Kasvilajit"
+  "cropStatistics": "Kasvilajit",
+  "fieldsCount_one": "{{count}} pelto",
+  "fieldsCount_other": "{{count}} peltoa",
+  "unnamedField": "(nimetön)",
+  "failed": "epäonnistui",
+  "cdseLimitError": "Haku epäonnistui. Copernicus-palvelun (CDSE) käyttökiintiö tai pyyntöraja on voinut ylittyä. Yritä myöhemmin uudelleen."
 }

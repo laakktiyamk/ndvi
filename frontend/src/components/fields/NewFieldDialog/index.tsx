@@ -24,7 +24,47 @@ import { USE_PIPELINE } from '../../../config';
 import { startProcess } from '../../../services/ndviService';
 import { useJobProgress } from '../../../hooks/useJobProgress';
 
+import { parseFieldsInput } from '../../../utils/parseFieldsInput';
+import type { ParsedField } from '../../../utils/parseFieldsInput';
 
+
+
+
+// Ajaa pyynnöt enintään `limit` kerrallaan ja palauttaa jokaisen tuloksen erikseen
+async function mapLimit<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, i: number) => Promise<R>
+): Promise<PromiseSettledResult<R>[]> {
+  const out: PromiseSettledResult<R>[] = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      try {
+        out[i] = { status: 'fulfilled', value: await fn(items[i], i) };
+      } catch (reason) {
+        out[i] = { status: 'rejected', reason };
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+// Validointipyyntö, jossa tilapäiset virheet uusitaan
+const postValidate = async (geometry: object) => {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await apiClient.post('/api/validate/geojson', { geometry });
+    } catch (e: any) {
+      const status = e?.response?.status;
+      // 4xx (paitsi 429) on pysyvä virhe, muut uusitaan
+      if (attempt >= 3 || (status && status < 500 && status !== 429)) throw e;
+      await new Promise((r) => setTimeout(r, 400 * attempt));
+    }
+  }
+};
 
 // ─── GeoJSON-bounds laskenta ──────────────────────────────────────────────────
 
@@ -71,6 +111,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     growingSeason,
   } = useAppStore();
 
+
   // ── Stepper ───────────────────────────────────────────────────────────────
   const [activeStep, setActiveStep] = useState(0);
   const [fetchError, setFetchError] = useState('');
@@ -95,13 +136,14 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   // ── GeoJSON-syöte ─────────────────────────────────────────────────────────
   const [geojsonPanelOpen, setGeojsonPanelOpen] = useState(false);
   const [geojsonText, setGeojsonText] = useState('');
+  const [geojsonName, setGeojsonName] = useState('');
+  const [geojsonFields, setGeojsonFields] = useState<ParsedField[]>([]);
   const [geojsonError, setGeojsonError] = useState('');
   const [geojsonValidating, setGeojsonValidating] = useState(false);
   const [geojsonPreview, setGeojsonPreview] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Vaihe 2 ───────────────────────────────────────────────────────────────
-    // ── Vaihe 2 ───────────────────────────────────────────────────────────────
   const [fieldInfo, setFieldInfo] = useState<FieldInfo | null>(null);
   const [fieldInfoLoading, setFieldInfoLoading] = useState(false);
   const [customName, setCustomName] = useState('');
@@ -125,6 +167,11 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     ).toISOString().split('T')[0];
     return today < seasonEnd ? today : seasonEnd;
   }, [growingSeason, today]);
+
+  const fieldNames: string[] | null =
+    foundField?._fromGeojson && geojsonFields.length > 1
+      ? geojsonFields.map((f) => f.name ?? '')
+      : null;
 
   // ── Efektit ───────────────────────────────────────────────────────────────
 
@@ -164,6 +211,9 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setFoundField({ geometry: geojsonPreview, _fromGeojson: true });
     setCropParcels([]);
 
+    // Usea pelto (FeatureCollection): kasvulohkot haetaan vasta lähetyksessä
+    if (geojsonPreview.type === 'FeatureCollection') return;
+
     let cancelled = false;
     fetchCropParcelsByGeometry(geojsonPreview)
       .then((parcels) => { if (!cancelled) setCropParcels(parcels); })
@@ -183,26 +233,69 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   const validateAndPreview = async (text: string, autoClose = false) => {
     setGeojsonError('');
     setGeojsonPreview(null);
+    setGeojsonName('');
+    setGeojsonFields([]);
     if (!text.trim()) return;
-    let parsed: object;
+
+    let parsed: any;
     try {
       parsed = JSON.parse(text);
     } catch (err: any) {
       setGeojsonError('Virheellinen JSON: ' + err.message);
       return;
     }
+
+    const parsedFields = parseFieldsInput(parsed);
+    if (!parsedFields || parsedFields.length === 0 || parsedFields.some((f) => !f.geometry)) {
+      setGeojsonError('Tuntematon muoto: odotetaan geometriaa, { name, geometry } tai { fields: [...] }');
+      return;
+    }
+
     setGeojsonValidating(true);
     try {
-      const res = await apiClient.post('/api/validate/geojson', { geometry: parsed });
-      if (res.data.valid && res.data.geometry) {
-        setGeojsonPreview(res.data.geometry);
-        const bounds = getGeometryBounds(res.data.geometry);
-        if (bounds) { setMapBounds(bounds); setMapCenter(null); }
-        setGeojsonError('');
-        if (autoClose) setGeojsonPanelOpen(false);
-      } else {
-        setGeojsonError((res.data.errors ?? []).join(', ') || 'Virheellinen GeoJSON');
+      const label = (i: number) =>
+        parsedFields[i].name ? `#${i + 1} "${parsedFields[i].name}"` : `#${i + 1}`;
+
+      const results = await mapLimit(parsedFields, 4, (f) => postValidate(f.geometry));
+
+      const errors: string[] = [];
+      const valid: ParsedField[] = [];
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          const status = (r.reason as any)?.response?.status;
+          errors.push(`${label(i)}: validointipyyntö epäonnistui (${status ?? 'ei vastausta'})`);
+        } else if (r.value.data.valid && r.value.data.geometry) {
+          valid.push({ geometry: r.value.data.geometry, name: parsedFields[i].name });
+        } else {
+          errors.push(`${label(i)}: ${(r.value.data.errors ?? []).join(', ') || 'virheellinen geometria'}`);
+        }
+      });
+
+      if (errors.length > 0) {
+        const shown = errors.slice(0, 5).join(' | ');
+        setGeojsonError(errors.length > 5 ? `${shown} | ja ${errors.length - 5} muuta` : shown);
+        return;
       }
+
+      setGeojsonFields(valid);
+      setGeojsonName(valid.length === 1 ? valid[0].name ?? '' : '');
+
+      // Yksi pelto: geometria sellaisenaan. Useampi: FeatureCollection kartalle.
+      const preview = valid.length === 1
+        ? valid[0].geometry
+        : {
+          type: 'FeatureCollection',
+          features: valid.map((f) => ({
+            type: 'Feature',
+            properties: { name: f.name ?? '' },
+            geometry: f.geometry,
+          })),
+        };
+
+      setGeojsonPreview(preview);
+      const bounds = getGeometryBounds(preview);
+      if (bounds) { setMapBounds(bounds); setMapCenter(null); }
+      if (autoClose) setGeojsonPanelOpen(false);
     } catch {
       setGeojsonError('Validointi epäonnistui');
     } finally {
@@ -249,6 +342,8 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setFoundField(null);
     setCropParcels([]);
     setGeojsonPreview(null);
+    setGeojsonName('');
+    setGeojsonFields([]);
     try {
       const res = await apiClient.get('/api/fields/by-location', { params: { lat, lon } });
       setFoundField(res.data);
@@ -265,6 +360,8 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   const handleGeojsonChange = (val: string) => {
     setGeojsonText(val);
     setGeojsonPreview(null);
+    setGeojsonName('');
+    setGeojsonFields([]);
     setFoundField(null);
     setGeojsonError('');
     clearTimeout((window as any).__geojsonTimer);
@@ -314,7 +411,17 @@ export default function NewFieldDialog({ open, onClose }: Props) {
 
   const handleNext = async () => {
     if (!foundField) return;
-    await fetchFieldInfo(foundField.geometry);
+
+    if (foundField._fromGeojson && geojsonFields.length > 1) {
+      setFieldInfo(null);
+      setCustomName('');
+    } else if (foundField._fromGeojson && geojsonName) {
+      // Nimi annettu syötteessä: ohitetaan sijaintihaku
+      setFieldInfo(null);
+      setCustomName(geojsonName);
+    } else {
+      await fetchFieldInfo(foundField.geometry);
+    }
     setActiveStep(1);
   };
 
@@ -338,11 +445,30 @@ export default function NewFieldDialog({ open, onClose }: Props) {
 
     if (USE_PIPELINE) {
       try {
-        const res = await startProcess(
-          [{ geometry: foundField.geometry, name, kasvulohkot: cropParcels }],
-          startDate,
-          endDate,
-        );
+        let payload: { geometry: object; name?: string; kasvulohkot?: ICropParcel[] }[];
+
+        if (foundField._fromGeojson && geojsonFields.length > 1) {
+          // Usea pelto: kasvulohkot haetaan enintään 4 kerrallaan
+          const parcelResults = await mapLimit(geojsonFields, 4, (f) =>
+            fetchCropParcelsByGeometry(f.geometry)
+          );
+          payload = geojsonFields.map((f, i) => {
+            const r = parcelResults[i];
+            return {
+              geometry: f.geometry,
+              name: f.name ?? '',
+              kasvulohkot: r.status === 'fulfilled' ? r.value : [],
+            };
+          });
+          const failedParcels = parcelResults.filter((r) => r.status === 'rejected').length;
+          if (failedParcels > 0) {
+            console.warn(`Kasvulohkohaku epäonnistui ${failedParcels}/${parcelResults.length} pellolle`);
+          }
+        } else {
+          payload = [{ geometry: foundField.geometry, name, kasvulohkot: cropParcels }];
+        }
+
+        const res = await startProcess(payload, startDate, endDate);
         setAoiIds(res.aoiIds);
         setJobId(res.jobId);
       } catch {
@@ -387,6 +513,8 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setGeojsonText('');
     setGeojsonError('');
     setGeojsonPreview(null);
+    setGeojsonName('');
+    setGeojsonFields([]);
     setGeojsonPanelOpen(false);
     setFieldInfo(null);
     setCustomName('');
@@ -401,11 +529,16 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     onClose();
   };
 
-    useEffect(() => {
+  useEffect(() => {
     if (!jobId || !job || job.status === 'running') return;
 
     if (job.status === 'failed') {
-      setFetchError(t('fetchError') || 'Haku epäonnistui');
+      setFetchError(
+        t('cdseLimitError', {
+          defaultValue:
+            'Fetching failed. The Copernicus (CDSE) data service may have reached its usage quota or request limit. Please try again later.',
+        })
+      );
       return;
     }
 
@@ -423,7 +556,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       handleClose();
       navigate('/fields');
     };
-    
+
     void finish();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job]);
@@ -472,9 +605,10 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       endDate={endDate}
       noDataFound={noDataFound}
       submitError={submitError}
+      fieldNames={fieldNames}
     />,
     <Step3Loading fetchError={fetchError} onBack={handleBack} progress={job} />
-    
+
   ][activeStep];
 
   return (
