@@ -9,14 +9,15 @@ import CodeIcon from '@mui/icons-material/Code';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import CloseIcon from '@mui/icons-material/Close';
 import NewFieldMap from '../NewFieldMap';
-import type { ICropParcel } from '../../../../types';
-
+import type { ICropParcel, IMunicipalityListItem } from '../../../../types';
+import MunicipalitySearch from './MunicipalitySearch';
 interface Step1Props {
   searchText: string;
   setSearchText: (v: string) => void;
   onSearch: () => void;
   searching: boolean;
   searchError: string;
+  onMunicipalitySelect: (municipality: IMunicipalityListItem) => void;
 
   geojsonPanelOpen: boolean;
   setGeojsonPanelOpen: (v: boolean | ((prev: boolean) => boolean)) => void;
@@ -34,6 +35,7 @@ interface Step1Props {
 
   mapCenter: [number, number] | null;
   mapBounds: [[number, number], [number, number]] | null;
+  municipalityGeometry?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null;
   mapRef: React.MutableRefObject<any>;
   foundField: any | null;
   cropParcels: ICropParcel[];
@@ -48,12 +50,12 @@ interface Step1Props {
 }
 
 export default function Step1Area({
-  searchText, setSearchText, onSearch, searching, searchError,
+  searchText, setSearchText, onSearch, searching, searchError, onMunicipalitySelect,
   geojsonPanelOpen, setGeojsonPanelOpen,
   geojsonText, geojsonError, geojsonValidating, geojsonPreview,
   onGeojsonChange, onFileChange,
   currentZoom, bboxActive, onSelectAll,
-  mapCenter, mapBounds, mapRef,
+  mapCenter, mapBounds, mapRef, municipalityGeometry,
   foundField, cropParcels, bboxFields,
   onMapClick, onZoomChange, onBboxFieldClick, getCropColor,
   clicking, clickError,
@@ -119,6 +121,7 @@ export default function Step1Area({
                 : t('selectAllInView') || 'Valitse pellot näkymässä'}
             </Button>
           )}
+          <MunicipalitySearch onSelect={onMunicipalitySelect} />
         </Box>
       </Box>
 
@@ -166,7 +169,8 @@ export default function Step1Area({
       <Box sx={{ height: 0, flex: 1, minHeight: 0 }}>
         <NewFieldMap
           mapCenter={mapCenter}
-          mapBounds={mapBounds}
+          mapBounds={mapBounds}                    
+          municipalityGeometry={municipalityGeometry}
           mapRef={mapRef}
           foundField={foundField}
           geojsonPreview={geojsonPreview}

@@ -1,3 +1,14 @@
+// ─── kunnat ──────────────────────────────────────
+export interface IMunicipalityListItem {
+  kunta: string; // kuntakoodi, esim. "005"
+  nimi: string;
+  bbox: [number, number, number, number]; // [minX, minY, maxX, maxY] (lng, lat)
+}
+
+export interface IMunicipality extends IMunicipalityListItem {
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
+}
+
 // ─── CropParcel ──────────────────────────────────────
 export interface ICropParcel {
   tunnus: string;

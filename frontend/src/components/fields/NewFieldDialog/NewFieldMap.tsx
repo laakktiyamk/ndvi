@@ -1,8 +1,8 @@
-import { useEffect} from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, useMapEvents, Polygon, useMap, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 //import type { CropParcel } from './types';
-import type { ICropParcel } from '../../../types'; 
+import type { ICropParcel } from '../../../types';
 
 // ─── MapZoomer ────────────────────────────────────────────────────────────────
 
@@ -65,6 +65,7 @@ interface NewFieldMapProps {
   onZoomChange: (zoom: number) => void;
   onBboxFieldClick: (field: any) => void;
   getCropColor: (kasvikoodi: string) => string;
+  municipalityGeometry?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null;
 }
 
 // ─── Komponentti ─────────────────────────────────────────────────────────────
@@ -82,6 +83,7 @@ export default function NewFieldMap({
   onZoomChange,
   onBboxFieldClick,
   getCropColor,
+  municipalityGeometry,
 }: NewFieldMapProps) {
   const polygonPositions = foundField?.geometry?.coordinates?.[0]?.map(
     ([lon, lat]: [number, number]) => [lat, lon] as [number, number]
@@ -97,6 +99,19 @@ export default function NewFieldMap({
       <ClickHandler onMapClick={onMapClick} disabled={geojsonPanelOpen} />
       <ZoomWatcher onZoomChange={onZoomChange} />
       <MapRefSetter mapRef={mapRef} />
+      {municipalityGeometry && (
+        <GeoJSON
+          key={JSON.stringify(municipalityGeometry.coordinates).slice(0, 80)}
+          data={municipalityGeometry}
+          style={{
+            color: '#ffeb3b',
+            weight: 3,
+            dashArray: '8 6',
+            fill: false,
+            interactive: false,
+          }}
+        />
+      )}
 
       {!geojsonPreview && polygonPositions.length > 0 && (
         <Polygon
