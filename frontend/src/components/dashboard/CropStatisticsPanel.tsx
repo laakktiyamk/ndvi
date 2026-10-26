@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Box, Typography, Grid } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { useFormatters } from '../../hooks/useFormatters';
 import type { ICropParcel } from '../../types';
@@ -99,9 +99,7 @@ export default function CropStatisticsPanel({ fields }: CropStatisticsPanelProps
                 name as string,
               ]}
             />
-            <Legend
-              formatter={(value) => <span style={{ fontSize: 11 }}>{value}</span>}
-            />
+            
           </PieChart>
         </ResponsiveContainer>
       </Grid>

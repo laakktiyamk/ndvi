@@ -18,16 +18,36 @@ function MapZoomer({ center, bounds }: {
   return null;
 }
 
+function InteractionWatcher({ onInteract }: { onInteract: () => void }) {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    el.addEventListener('pointerdown', onInteract);
+    el.addEventListener('wheel', onInteract, { passive: true });
+    return () => {
+      el.removeEventListener('pointerdown', onInteract);
+      el.removeEventListener('wheel', onInteract);
+    };
+  }, [map, onInteract]);
+  return null;
+}
+
 // ─── ZoomWatcher ─────────────────────────────────────────────────────────────
 
 function ZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
   const map = useMapEvents({
-    zoomend() { onZoomChange(map.getZoom()); },
+    zoomend() {
+      console.log('zoomend', map.getZoom());
+      onZoomChange(map.getZoom());
+    },
+    moveend() {
+      console.log('moveend', map.getZoom());
+      onZoomChange(map.getZoom());
+    },
   });
   useEffect(() => { onZoomChange(map.getZoom()); }, []);
   return null;
 }
-
 // ─── MapRef ──────────────────────────────────────────────────────────────────
 
 function MapRefSetter({ mapRef }: { mapRef: React.MutableRefObject<any> }) {
@@ -65,7 +85,8 @@ interface NewFieldMapProps {
   onZoomChange: (zoom: number) => void;
   onBboxFieldClick: (field: any) => void;
   getCropColor: (kasvikoodi: string) => string;
-  municipalityGeometry?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null;
+  municipalityGeometry?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null;  
+  onUserInteract?: () => void;
 }
 
 // ─── Komponentti ─────────────────────────────────────────────────────────────
@@ -84,6 +105,7 @@ export default function NewFieldMap({
   onBboxFieldClick,
   getCropColor,
   municipalityGeometry,
+  onUserInteract,
 }: NewFieldMapProps) {
   const polygonPositions = foundField?.geometry?.coordinates?.[0]?.map(
     ([lon, lat]: [number, number]) => [lat, lon] as [number, number]
@@ -95,9 +117,10 @@ export default function NewFieldMap({
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         attribution="Esri World Imagery"
       />
-      <MapZoomer center={mapCenter} bounds={mapBounds} />
+      <MapZoomer center={mapCenter} bounds={mapBounds} />      
       <ClickHandler onMapClick={onMapClick} disabled={geojsonPanelOpen} />
       <ZoomWatcher onZoomChange={onZoomChange} />
+      {onUserInteract && <InteractionWatcher onInteract={onUserInteract} />}
       <MapRefSetter mapRef={mapRef} />
       {municipalityGeometry && (
         <GeoJSON
@@ -105,7 +128,7 @@ export default function NewFieldMap({
           data={municipalityGeometry}
           style={{
             color: '#ffeb3b',
-            weight: 3,
+            weight: 1,
             dashArray: '8 6',
             fill: false,
             interactive: false,
