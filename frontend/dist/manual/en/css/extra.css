@@ -1,0 +1,15 @@
+/* Näytä vain sisältö: piilota yläpalkki, sivuvalikot ja alatunniste */
+.md-header,
+.md-tabs,
+.md-sidebar,
+.md-footer {
+  display: none !important;
+}
+
+.md-main__inner {
+  margin-top: 1rem;
+}
+
+.md-content {
+  max-width: 100%;
+}

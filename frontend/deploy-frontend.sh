@@ -29,7 +29,14 @@ aws s3 sync dist/ "s3://$BUCKET" \
   --region "$REGION" \
   --delete \
   --exclude "index.html" \
+  --exclude "manual/*" \
   --cache-control "public,max-age=31536000,immutable"
+
+echo "==> Manuaali (ei pitkää cachea)"
+aws s3 sync dist/manual/ "s3://$BUCKET/manual/" \
+  --region "$REGION" \
+  --delete \
+  --cache-control "no-cache"
 
 echo "==> index.html (ei cachea)"
 aws s3 cp dist/index.html "s3://$BUCKET/index.html" \

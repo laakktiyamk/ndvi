@@ -1,0 +1,14 @@
+site_name: NDVI-monitor käyttöohje
+site_dir: ../../public/manual/fi
+use_directory_urls: false
+theme:
+  name: material
+  language: fi
+  palette:
+    scheme: default
+    primary: green
+    accent: light green
+markdown_extensions:
+  - attr_list
+extra_css:
+  - css/extra.css

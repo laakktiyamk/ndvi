@@ -1,0 +1,14 @@
+site_name: NDVI-monitor User Guide
+site_dir: ../../public/manual/en
+use_directory_urls: false
+theme:
+  name: material
+  language: en
+  palette:
+    scheme: default
+    primary: indigo
+    accent: light green
+extra_css:
+  - css/extra.css
+markdown_extensions:
+  - attr_list

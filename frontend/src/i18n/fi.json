@@ -190,5 +190,7 @@
   "cdseLimitError": "Haku epäonnistui. Copernicus-palvelun (CDSE) käyttökiintiö tai pyyntöraja on voinut ylittyä. Yritä myöhemmin uudelleen.",
   "zoomInToSelectFields": "Zoomaa lähemmäs nähdäksesi pellot",
   "showFieldsInView": "Näytä pellot näkymässä", "hideFieldsInView": "Piilota pellot",
-  "noFieldsInView": "Näkymässä ei ole peltoja"
+  "noFieldsInView": "Näkymässä ei ole peltoja",
+  "searchMunicipality": "Hae kuntaa",
+  "noMunicipalities": "Kuntia ei löytynyt"
 }

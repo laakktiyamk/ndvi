@@ -11,9 +11,13 @@ import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+//import HelpOutlineIcon from "@mui/icons-material/HelpOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import NavDrawer from './NavDrawer';
 import SettingsMenu from './SettingsMenu';
 import { useAuthStore } from '../../store/authStore';
+import ManualDialog from '../manual/ManualDialog';
+import { useManualStore } from '../../store/manualStore';
 
 const DRAWER_WIDTH = 240;
 const APPBAR_HEIGHT = 64;
@@ -36,6 +40,9 @@ export default function AppLayout({ themeMode, onToggleTheme }: Props) {
   const activeFieldName = activeField?.name ?? (ndviEntries[0] as any)?.name ?? null;
 
   const effectiveLeft = isMobile ? 0 : navOpen ? DRAWER_WIDTH : 0;
+
+
+  const openManual = useManualStore((s) => s.openManual);
 
 
   const fetchGrowingSeason = useAppStore((s) => s.fetchGrowingSeason);
@@ -77,6 +84,10 @@ export default function AppLayout({ themeMode, onToggleTheme }: Props) {
             )}
           </Box>
 
+          <IconButton color="inherit" onClick={() => openManual('remove-field')} aria-label="user manual">
+            <InfoOutlinedIcon />
+          </IconButton>
+
           {user && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <Avatar sx={{ width: 28, height: 28, fontSize: 13, bgcolor: 'primary.dark' }}>
@@ -100,7 +111,7 @@ export default function AppLayout({ themeMode, onToggleTheme }: Props) {
           )}
         </Toolbar>
       </AppBar>
-
+      <ManualDialog />
       <NavDrawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}

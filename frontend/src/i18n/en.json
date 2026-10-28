@@ -190,5 +190,7 @@
   "cdseLimitError": "Fetching failed. The Copernicus (CDSE) data service may have reached its usage quota or request limit. Please try again later.",
   "zoomInToSelectFields": "Zoom in to see fields",
   "showFieldsInView": "Show fields in view", "hideFieldsInView": "Hide fields",
-  "noFieldsInView": "No fields in view"
+  "noFieldsInView": "No fields in view",
+   "searchMunicipality": "Search municipality",
+  "noMunicipalities": "No municipalities found"
 }
