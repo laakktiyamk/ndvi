@@ -139,9 +139,21 @@ Authorization: Bearer {{token}}
 POST {{baseUrl}}/dev/import-FieldParcels
 Content-Type: application/json
 
-### CropParcels to local tai Azure mongoDb (cosmosDB)
-POST {{baseUrl}}/dev/import-CropParcels
+#############################
+### KORJAUS CropParcels to local tai Azure mongoDb (cosmosDB) KORJAUS puuttuvat
+POST {{baseUrl}}/dev/import-CropParcels?vuosi=2024&skipExisting=true
 Content-Type: application/json
+#############################
+
+### KORJAUS CropParcels 4kpl
+POST {{baseUrl}}/dev/import-CropParcels?vuosi=test
+Content-Type: application/json
+
+### UUSI vuosi CropParcels to local tai Azure mongoDb (cosmosDB), vaihda vuosi parametri
+POST {{baseUrl}}/dev/import-CropParcels?vuosi=2024
+Content-Type: application/json
+
+
 
 ### Import CropTypes to local tai Azure mongoDb (cosmosDB)
 POST {{baseUrl}}/dev/import-CropTypes
