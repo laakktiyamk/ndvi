@@ -5,7 +5,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Button, Box, Typography, IconButton,
   Stepper, Step, StepLabel,
-  useTheme, useMediaQuery, MobileStepper,
+  useTheme, useMediaQuery, MobileStepper, Alert,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
@@ -29,6 +29,9 @@ import type { ParsedField } from '../../../utils/parseFieldsInput';
 
 import { useMunicipalityStore } from '../../../store/municipalityStore';
 
+
+import { checkAoi } from '../../../services/fieldService';
+import type { AoiCheckResult } from '../../../services/fieldService';
 
 // Ajaa pyynnöt enintään `limit` kerrallaan ja palauttaa jokaisen tuloksen erikseen
 async function mapLimit<T, R>(
@@ -155,6 +158,9 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   const [noDataFound, setNoDataFound] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  const [aoiCheck, setAoiCheck] = useState<AoiCheckResult | null>(null);
+  const [checking, setChecking] = useState(false);
+
   // ── Putki (AWS) ───────────────────────────────────────────────────────────
   const [jobId, setJobId] = useState<string | null>(null);
   const [aoiIds, setAoiIds] = useState<string[]>([]);
@@ -227,6 +233,12 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       .catch(() => { });
     return () => { cancelled = true; };
   }, [geojsonPreview]);
+
+  useEffect(() => {
+    setAoiCheck(null);
+  },
+    [foundField]);
+
 
   // ── Apufunktiot ───────────────────────────────────────────────────────────
 
@@ -452,11 +464,26 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   const handleNext = async () => {
     if (!foundField) return;
 
+    // Yksi AOI: tarkistetaan, onko data jo kannassa. Usean pellon syöte ohittaa tarkistuksen.
+    if (!(foundField._fromGeojson && geojsonFields.length > 1)) {
+      setChecking(true);
+      try {
+        const result = await checkAoi(foundField.geometry);
+        if (result.status !== 'none') {
+          setAoiCheck(result);
+          return; // pysäytetään, ilmoitus näytetään
+        }
+      } catch {
+        // Tarkistus epäonnistui: jatketaan normaalisti (backend estää tuplat)
+      } finally {
+        setChecking(false);
+      }
+    }
+
     if (foundField._fromGeojson && geojsonFields.length > 1) {
       setFieldInfo(null);
       setCustomName('');
     } else if (foundField._fromGeojson && geojsonName) {
-      // Nimi annettu syötteessä: ohitetaan sijaintihaku
       setFieldInfo(null);
       setCustomName(geojsonName);
     } else {
@@ -568,6 +595,19 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setBboxActive(false);
     void selectMunicipality(null);
     onClose();
+    setAoiCheck(null);
+  };
+
+  const handleOpenExisting = () => {
+    if (!aoiCheck) return;
+    setSelectedField(aoiCheck.id);
+    handleClose();
+    navigate('/fields');
+  };
+
+  const handleAddExisting = () => {
+    setAoiCheck(null);
+    void handleSubmit(); // sama putki kuin normaalisti, nimeä ei tarvita
   };
 
   useEffect(() => {
@@ -706,6 +746,26 @@ export default function NewFieldDialog({ open, onClose }: Props) {
         {stepContent}
       </DialogContent>
 
+      {activeStep === 0 && aoiCheck && (
+        <Alert
+          severity="info"
+          sx={{ mx: 2, mb: 1 }}
+          action={
+            aoiCheck.status === 'mine' ? (
+              <Button color="inherit" size="small" onClick={handleOpenExisting}>
+                {t('aoiOpenField')}
+              </Button>
+            ) : (
+              <Button color="inherit" size="small" onClick={handleAddExisting}>
+                {t('aoiAddToMyFields')}
+              </Button>
+            )
+          }
+        >
+          {aoiCheck.status === 'mine' ? t('aoiAlreadyMine') : t('aoiAlreadyShared')}
+        </Alert>
+      )}
+
       {activeStep < 2 && (
         isMobile ? (
           <MobileStepper
@@ -722,7 +782,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
             }
             nextButton={
               activeStep === 0
-                ? <Button size="small" onClick={handleNext} disabled={!foundField} endIcon={<KeyboardArrowRightIcon />}>
+                ? <Button size="small" onClick={handleNext} disabled={!foundField || checking || !!aoiCheck} endIcon={<KeyboardArrowRightIcon />}>
                   {t('next')}
                 </Button>
                 : <Button size="small" variant="contained" onClick={handleSubmit} disabled={imagesLoading}>
@@ -735,7 +795,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
             {activeStep === 0 ? (
               <>
                 <Button onClick={handleClose}>{t('cancel')}</Button>
-                <Button variant="contained" disabled={!foundField} onClick={handleNext} endIcon={<KeyboardArrowRightIcon />}>
+                <Button variant="contained" disabled={!foundField || checking || !!aoiCheck} onClick={handleNext} endIcon={<KeyboardArrowRightIcon />}>
                   {t('next')}
                 </Button>
               </>

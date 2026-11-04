@@ -192,5 +192,9 @@
   "showFieldsInView": "Show fields in view", "hideFieldsInView": "Hide fields",
   "noFieldsInView": "No fields in view",
    "searchMunicipality": "Search municipality",
-  "noMunicipalities": "No municipalities found"
+  "noMunicipalities": "No municipalities found",
+  "aoiAlreadyMine": "This field is already in your list.",
+  "aoiAlreadyShared": "The data for this field already exists. Add the field to your list?",
+  "aoiOpenField": "Open field",
+  "aoiAddToMyFields": "Add to my fields"
 }

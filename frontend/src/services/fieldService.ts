@@ -9,3 +9,17 @@ export const createField = (data: Partial<IField>) =>
 
 export const deleteField = (id: string) =>
   apiClient.delete(`/api/fields/${id}`);
+
+export type AoiStatus = 'none' | 'mine' | 'shared';
+
+export interface AoiCheckResult {
+  status: AoiStatus;
+  id: string; // sama id kuin dates-dokumentilla ja /api/fields-listassa
+}
+
+export const checkAoi = async (
+  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon
+): Promise<AoiCheckResult> => {
+  const res = await apiClient.post<AoiCheckResult>('/api/fields/check-aoi', { geometry });
+  return res.data;
+};

@@ -192,5 +192,9 @@
   "showFieldsInView": "Näytä pellot näkymässä", "hideFieldsInView": "Piilota pellot",
   "noFieldsInView": "Näkymässä ei ole peltoja",
   "searchMunicipality": "Hae kuntaa",
-  "noMunicipalities": "Kuntia ei löytynyt"
+  "noMunicipalities": "Kuntia ei löytynyt",
+  "aoiAlreadyMine": "Pelto on jo listallasi.",
+  "aoiAlreadyShared": "Tämän pellon data on jo kannassa. Lisätäänkö pelto listaasi?",
+  "aoiOpenField": "Avaa pelto",
+  "aoiAddToMyFields": "Lisää listaani"
 }
