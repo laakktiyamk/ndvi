@@ -138,7 +138,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   // ── Filmroll-dialogi ──────────────────────────────
   const [filmrollOpen, setFilmrollOpen] = useState(false);
 
-  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData, cropParcels, setSelectedYear } = useAppStore();
+  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData, cropParcels, setSelectedYear, fetchCropParcelsForYear } = useAppStore();
   const selectedYear = useAppStore(s => s.selectedYear) ?? currentYear;
 
   const loading = imagesLoading && activeGeometryHash !== fieldId;
@@ -271,6 +271,13 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
       img.src = '';
     };
   }, [dataUrl]);
+
+  // ── Haetaan valitun vuoden kasvulohkot ────────────
+  useEffect(() => {
+    if (activeGeometryHash !== fieldId) return;
+    void fetchCropParcelsForYear(fieldId, selectedYear);
+  }, [fieldId, selectedYear, activeGeometryHash]);
+
 
   if (loading) return (
     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>

@@ -7,6 +7,8 @@ import { deleteField as deleteFieldService } from '../services/fieldService';
 import { getGrowingSeason } from '../services/growingSeasonService';
 import type { IGrowingSeason } from '../services/growingSeasonService';
 import i18n from '../i18n/i18n';
+import { fetchCropParcelsByGeometry } from '../services/cropParcelsService';
+
 
 interface AppState {
   // ── Fields (lista) ──────────────────────────────
@@ -23,9 +25,6 @@ interface AppState {
   ndviEntries: MergedNdviEntry[];
   imagesLoading: boolean;
   imagesError: string | null;
-
-  // ── Kasvulohkot ──────────────────────────────────
-  cropParcels: ICropParcel[];
 
   // ── Säätiedot ────────────────────────────────────
   weatherData: IWeather[];
@@ -68,7 +67,14 @@ interface AppState {
   setNewFieldAdded: (v: boolean) => void;
   setSelectedYear: (year: number | null) => void; // UUSI
   resetFields: () => void;
+  // ── Kasvulohkot ──────────────────────────────────
+  cropParcels: ICropParcel[];
+  cropParcelsCache: Record<string, ICropParcel[]>; // avain: `${fieldId}:${vuosi}`
+  fetchCropParcelsForYear: (fieldId: string, year: number) => Promise<void>;
 }
+
+const MAX_PARCEL_YEAR = 2025; // uusin vuosi, jolta kasvulohkoja on kannassa
+let latestParcelKey = '';     // suojaa hitaan vastauksen ylikirjoitukselta
 
 export const useAppStore = create<AppState>((set, get) => ({
   fields: [],
@@ -84,7 +90,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   imagesError: null,
 
   cropParcels: [],
-
+  cropParcelsCache: {},
   weatherData: [],
   weatherLoading: false,
   weatherError: null,
@@ -114,8 +120,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  setSelectedField: (id) => {
-    set({ selectedFieldId: id });
+    setSelectedField: (id) => {
+    const changed = id !== get().selectedFieldId;
+    set({
+      selectedFieldId: id,
+      // Uusi pelto → vuosi nollataan, jolloin NdviMapViewer valitsee uusimman
+      ...(changed ? { selectedYear: null } : {}),
+    });
     if (!id) return;
     set((state) => ({
       recentFieldIds: [id, ...state.recentFieldIds.filter((x) => x !== id)].slice(0, 5),
@@ -210,6 +221,36 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+    fetchCropParcelsForYear: async (fieldId, year) => {
+    const queryYear = Math.min(year, MAX_PARCEL_YEAR);
+    const key = `${fieldId}:${queryYear}`;
+    latestParcelKey = key;
+
+    const cached = get().cropParcelsCache[key];
+    if (cached) {
+      set({ cropParcels: cached });
+      return;
+    }
+
+    const field = get().fields.find((f) => f.id === fieldId);
+    if (!field) return;
+
+    try {
+      const parcels = await fetchCropParcelsByGeometry(
+        field.geometry as GeoJSON.Polygon | GeoJSON.MultiPolygon,
+        queryYear
+      );
+      set((state) => ({
+        cropParcelsCache: { ...state.cropParcelsCache, [key]: parcels },
+        // Näytetään vain, jos tämä on yhä viimeisin pyyntö
+        ...(latestParcelKey === key ? { cropParcels: parcels } : {}),
+      }));
+    } catch (e) {
+      console.warn(`Kasvulohkohaku epäonnistui (${key})`, e);
+    }
+  },
+
+
   fetchGrowingSeason: async () => {
     set({ growingSeasonLoading: true, growingSeasonError: null });
     try {
@@ -247,6 +288,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       startDate: `${new Date().getFullYear()}-04-01`,
       newFieldAdded: false,
       selectedYear: null, // UUSI
+      cropParcelsCache: {},
     }),
 
   deleteField: async (id) => {

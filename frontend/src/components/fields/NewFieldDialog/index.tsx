@@ -204,11 +204,13 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   }, [noDataFound]);
 
   useEffect(() => {
-    if (!foundField?.peruslohkotunnus) return;
+    if (!foundField?.peruslohkotunnus) return; // GeoJSON-polku hoituu omassa effectissään
     setCropParcels([]);
-    apiClient.get(`/api/fields/${foundField.peruslohkotunnus}/crop-parcels`)
-      .then((res) => setCropParcels(res.data))
+    let cancelled = false;
+    fetchCropParcelsByGeometry(foundField.geometry) // oletus: 2025
+      .then((parcels) => { if (!cancelled) setCropParcels(parcels); })
       .catch(() => { });
+    return () => { cancelled = true; };
   }, [foundField]);
 
   useEffect(() => {
