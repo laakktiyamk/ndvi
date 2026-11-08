@@ -13,7 +13,7 @@ import DashboardPage from './pages/DashboardPage';
 import FieldsPage from './pages/FieldsPage';
 import WeatherPage from './pages/WeatherPage';
 import AnalysisPage from './pages/AnalysisPage';
-
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000, retry: 1 } },
@@ -41,6 +41,7 @@ export default function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
 
             <Route element={<ProtectedRoute />}>
               <Route element={

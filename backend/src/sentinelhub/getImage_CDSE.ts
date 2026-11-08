@@ -72,6 +72,7 @@ export const getImage = async (
             to: new Date(addOneDay(date)).toISOString(),
           },
         },
+        processing: { upsampling: "BICUBIC" },
       }],
     },
     output: {

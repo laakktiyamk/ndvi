@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+//import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField,
   Button, Alert, CircularProgress, Link, Divider,
@@ -12,7 +13,7 @@ import axios from 'axios';
 
 export default function RegisterPage() {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
+  //const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,14 +21,19 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [sentTo, setSentTo] = useState<string | null>(null);
+  const currentLang = i18n.language.startsWith('fi') ? 'fi' : 'en';
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== password2) { setError(t('passwordMismatch')); return; }
     setLoading(true);
     setError(null);
     try {
-      await register(email, password, username);
-      navigate('/login', { state: { registered: true } });
+      //await register(email, password, username);
+      await register(email, password, username, currentLang);
+      setSentTo(email);
+      //navigate('/login', { state: { registered: true } });
     } catch (err: unknown) {
       if (axios.isAxiosError(err)) {
         const data = err.response?.data;
@@ -49,7 +55,6 @@ export default function RegisterPage() {
     }
   };
 
-  const currentLang = i18n.language.startsWith('fi') ? 'fi' : 'en';
 
   return (
     <Box sx={{
@@ -75,6 +80,15 @@ export default function RegisterPage() {
           </ToggleButtonGroup>
         </Box>
         <Typography variant="h6" sx={{ mb: 3 }}>{t('register')}</Typography>
+        
+        {sentTo ? (
+  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <Alert severity="success">{t('verifyEmailSent', { email: sentTo })}</Alert>
+    <Button component={RouterLink} to="/login" variant="contained" fullWidth>
+      {t('login')}
+    </Button>
+  </Box>
+) : (
         <Box component="form" onSubmit={handleSubmit}>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
@@ -119,7 +133,7 @@ export default function RegisterPage() {
               {loading ? '...' : t('register')}
             </Button>
           </Box>
-        </Box>
+        </Box>)}
         <Divider sx={{ my: 3 }} />
         <Typography variant="body2" sx={{ textAlign: 'center' }}>
           <Link component={RouterLink} to="/login">{t('login')}</Link>

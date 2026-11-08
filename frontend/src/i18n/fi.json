@@ -196,5 +196,6 @@
   "aoiAlreadyMine": "Pelto on jo listallasi.",
   "aoiAlreadyShared": "Tämän pellon data on jo kannassa. Lisätäänkö pelto listaasi?",
   "aoiOpenField": "Avaa pelto",
-  "aoiAddToMyFields": "Lisää listaani"
+  "aoiAddToMyFields": "Lisää listaani",
+  "verifyEmailSent": "Lähetimme vahvistuslinkin osoitteeseen {{email}}. Avaa linkki aktivoidaksesi tilisi. Jos viestiä ei näy, tarkista roskapostikansio."
 }
