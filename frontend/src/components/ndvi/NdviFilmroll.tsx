@@ -41,12 +41,14 @@ function getUniformityKey(std: number): { key: string; fallback: string } {
   return { key: 'filmroll.uniformityUneven', fallback: 'Epätasainen' }
 }
 
-const SPROCKET_COUNT = 22
+const FRAME_W = 140
+const FRAME_GAP = 6
+const SPROCKET_PITCH = 30 // 16 px reikä + 14 px väli
 
-function SprocketRow() {
+function SprocketRow({ count }: { count: number }) {
   return (
     <Box sx={{ display: 'flex', gap: '14px', px: '10px', overflow: 'hidden' }}>
-      {Array.from({ length: SPROCKET_COUNT }).map((_, i) => (
+      {Array.from({ length: count }).map((_, i) => (
         <Box
           key={i}
           sx={{
@@ -259,6 +261,10 @@ export function NdviFilmroll({ entries, frameHeight = 110, onSelect, initialSele
   const trackRef = useRef<HTMLDivElement>(null)
   const locale = getLocale(i18n.language)
 
+  const framesRef = useRef<HTMLDivElement>(null)
+  const contentWidth = entries.length * (FRAME_W + FRAME_GAP) + 14
+  const sprocketCount = Math.ceil(contentWidth / SPROCKET_PITCH) + 1
+
   const [selectedIdx, setSelectedIdx] = useState(() => {
     if (initialSelectedDate) {
       const idx = entries.findIndex(e => e.date === initialSelectedDate)
@@ -319,11 +325,9 @@ export function NdviFilmroll({ entries, frameHeight = 110, onSelect, initialSele
   }
 
   useEffect(() => {
-    const track = trackRef.current
-    if (!track) return
-    const frame = track.children[selectedIdx] as HTMLElement | undefined
-    frame?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
-  }, [selectedIdx])
+  const frame = framesRef.current?.children[selectedIdx] as HTMLElement | undefined
+  frame?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+}, [selectedIdx])
 
   function select(i: number) {
     setSelectedIdx(i)
@@ -338,10 +342,9 @@ export function NdviFilmroll({ entries, frameHeight = 110, onSelect, initialSele
     )
   }
 
-  return (
+    return (
     <Box>
       <Box sx={{ position: 'relative', bgcolor: '#141414', borderRadius: 2, py: '10px', overflow: 'hidden' }}>
-        <SprocketRow />
         <Box
           ref={trackRef}
           onMouseDown={onMouseDown}
@@ -349,24 +352,31 @@ export function NdviFilmroll({ entries, frameHeight = 110, onSelect, initialSele
           onMouseUp={onMouseUp}
           onMouseLeave={onMouseUp}
           sx={{
-            display: 'flex', gap: '6px', px: '10px', py: '6px',
             overflowX: 'auto', scrollbarWidth: 'none',
             '&::-webkit-scrollbar': { display: 'none' },
             cursor: 'grab', '&:active': { cursor: 'grabbing' },
           }}
         >
-          {entries.map((entry, i) => (
-            <FilmFrame
-              key={entry.date}
-              entry={entry}
-              selected={i === selectedIdx}
-              height={frameHeight}
-              locale={locale}
-              onClick={() => select(i)}
-            />
-          ))}
+          <Box sx={{ width: contentWidth, minWidth: '100%' }}>
+            <SprocketRow count={sprocketCount} />
+            <Box
+              ref={framesRef}
+              sx={{ display: 'flex', gap: `${FRAME_GAP}px`, px: '10px', py: '6px' }}
+            >
+              {entries.map((entry, i) => (
+                <FilmFrame
+                  key={entry.date}
+                  entry={entry}
+                  selected={i === selectedIdx}
+                  height={frameHeight}
+                  locale={locale}
+                  onClick={() => select(i)}
+                />
+              ))}
+            </Box>
+            <SprocketRow count={sprocketCount} />
+          </Box>
         </Box>
-        <SprocketRow />
 
         {canScrollLeft && (
           <IconButton
