@@ -22,13 +22,15 @@ import { useFormatters } from '../hooks/useFormatters';
 import WeatherSummaryPanel from '../components/dashboard/WeatherSummaryPanel';
 import CropStatisticsPanel from '../components/dashboard/CropStatisticsPanel';
 import NewFieldDialog from '../components/fields/NewFieldDialog';
+import { useOpenNewField } from '../hooks/useOpenNewField';
+import CdseNotConnectedSnackbar from '../components/fields/CdseNotConnectedSnackbar';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
 const NAV_CARDS = [
-  { labelKey: 'fields',   descKey: 'navFieldsDesc',   path: '/fields',   icon: <GrassIcon sx={{ fontSize: 36 }} color="primary" />,    requiresField: false },
-  { labelKey: 'weather',  descKey: 'navWeatherDesc',  path: '/weather',  icon: <WbSunnyIcon sx={{ fontSize: 36 }} color="primary" />,  requiresField: true  },
-  { labelKey: 'analysis', descKey: 'navAnalysisDesc', path: '/analysis', icon: <BarChartIcon sx={{ fontSize: 36 }} color="primary" />, requiresField: true  },
+  { labelKey: 'fields', descKey: 'navFieldsDesc', path: '/fields', icon: <GrassIcon sx={{ fontSize: 36 }} color="primary" />, requiresField: false },
+  { labelKey: 'weather', descKey: 'navWeatherDesc', path: '/weather', icon: <WbSunnyIcon sx={{ fontSize: 36 }} color="primary" />, requiresField: true },
+  { labelKey: 'analysis', descKey: 'navAnalysisDesc', path: '/analysis', icon: <BarChartIcon sx={{ fontSize: 36 }} color="primary" />, requiresField: true },
 ];
 
 export default function DashboardPage() {
@@ -43,6 +45,7 @@ export default function DashboardPage() {
   } = useAppStore();
 
   const [newFieldOpen, setNewFieldOpen] = useState(false);
+  const { tryOpen, notConnected, dismiss } = useOpenNewField(() => setNewFieldOpen(true));
   const [expanded, setExpanded] = useState<string | false>(false);
 
   const handleAccordion = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
@@ -67,7 +70,10 @@ export default function DashboardPage() {
   const hasCropData = fields.some(f => f.kasvulohkot && f.kasvulohkot.length > 0);
 
   const newFieldDialog = (
-    <NewFieldDialog open={newFieldOpen} onClose={() => setNewFieldOpen(false)} />
+    <>
+      <NewFieldDialog open={newFieldOpen} onClose={() => setNewFieldOpen(false)} />
+      <CdseNotConnectedSnackbar open={notConnected} onClose={dismiss} />
+    </>
   );
 
   if (!fieldsLoading && fieldsFetched && fields.length === 0) {
@@ -78,7 +84,7 @@ export default function DashboardPage() {
           <GrassIcon sx={{ fontSize: 56, color: 'action.disabled', mb: 2 }} />
           <Typography variant="h6" sx={{ mb: 1 }}>{t('noFields')}</Typography>
           <Typography color="text.secondary" sx={{ mb: 3 }}>{t('addFieldPrompt')}</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setNewFieldOpen(true)}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { void tryOpen(); }}>
             {t('addField')}
           </Button>
         </Paper>
@@ -121,7 +127,7 @@ export default function DashboardPage() {
         <Grid size={{ xs: 6, sm: 3 }}>
           <Card elevation={0} variant="outlined" sx={{ height: '100%' }}>
             <CardActionArea
-              onClick={() => setNewFieldOpen(true)}
+              onClick={() => { void tryOpen(); }}
               sx={{ height: '100%', p: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}
             >
               <AddIcon sx={{ fontSize: 36 }} color="primary" />
@@ -201,8 +207,8 @@ export default function DashboardPage() {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                     {trend === null ? <Typography color="text.secondary">—</Typography>
                       : trend > 0.02 ? <><TrendingUpIcon sx={{ color: '#2E7D32' }} /><Typography sx={{ color: '#2E7D32', fontWeight: 600 }}>{fmt.signed(trend)}</Typography></>
-                      : trend < -0.02 ? <><TrendingDownIcon sx={{ color: '#C62828' }} /><Typography sx={{ color: '#C62828', fontWeight: 600 }}>{fmt.signed(trend)}</Typography></>
-                      : <><TrendingFlatIcon color="action" /><Typography color="text.secondary">{fmt.signed(trend)}</Typography></>
+                        : trend < -0.02 ? <><TrendingDownIcon sx={{ color: '#C62828' }} /><Typography sx={{ color: '#C62828', fontWeight: 600 }}>{fmt.signed(trend)}</Typography></>
+                          : <><TrendingFlatIcon color="action" /><Typography color="text.secondary">{fmt.signed(trend)}</Typography></>
                     }
                   </Box>
                   {prevEntry && (

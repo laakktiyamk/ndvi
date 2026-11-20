@@ -22,11 +22,14 @@ apiClient.interceptors.request.use((config) => {
 // 401 → kirjaudu ulos
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: unknown) => {
+    (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
-      //localStorage.removeItem('token');
-      localStorage.removeItem('auth-storage')
-      window.location.href = '/login';
+      // Login's own 401 (wrong credentials) is a normal form error, not an expired session
+      const isLoginRequest = error.config?.url?.includes('/api/user/login');
+      if (!isLoginRequest) {
+        localStorage.removeItem('auth-storage');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

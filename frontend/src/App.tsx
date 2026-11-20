@@ -14,6 +14,10 @@ import FieldsPage from './pages/FieldsPage';
 import WeatherPage from './pages/WeatherPage';
 import AnalysisPage from './pages/AnalysisPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import SettingsPage from './pages/SettingsPage';
+
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000, retry: 1 } },
@@ -42,7 +46,8 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
-
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={
                 <AppLayout
@@ -54,6 +59,7 @@ export default function App() {
                 <Route path="fields" element={<FieldsPage />} />
                 <Route path="weather" element={<WeatherPage />} />
                 <Route path="analysis" element={<AnalysisPage />} />
+                <Route path="settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Route>

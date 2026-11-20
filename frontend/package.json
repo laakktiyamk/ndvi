@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",       
+    "dev:aws": "vite --mode aws",
+    "deploy": "bash ./deploy-frontend.sh EAIWBI3OY75DY AWS-step-functions"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

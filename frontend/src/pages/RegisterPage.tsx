@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import { register } from '../services/authService';
-import axios from 'axios';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export default function RegisterPage() {
   const { t, i18n } = useTranslation();
@@ -24,37 +24,23 @@ export default function RegisterPage() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const currentLang = i18n.language.startsWith('fi') ? 'fi' : 'en';
 
+  const [clientId, setClientId] = useState('');
+  const [clientSecret, setClientSecret] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== password2) { setError(t('passwordMismatch')); return; }
     setLoading(true);
     setError(null);
-    try {
-      //await register(email, password, username);
-      await register(email, password, username, currentLang);
-      setSentTo(email);
-      //navigate('/login', { state: { registered: true } });
+    try {       
+      await register(email, password, username, clientId, clientSecret, currentLang);
+      setSentTo(email);      
     } catch (err: unknown) {
-      if (axios.isAxiosError(err)) {
-        const data = err.response?.data;
-        if (data?.errors && Array.isArray(data.errors)) {
-          const messages = data.errors.map((e: { msg: string }) => e.msg).join(' | ');
-          setError(messages);
-        } else if (data?.message) {
-          setError(data.message);
-        } else {
-          setError(t('fetchFailed'));
-        }
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError(t('fetchFailed'));
-      }
+      setError(getApiErrorMessage(err, t));    
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <Box sx={{
@@ -121,6 +107,31 @@ export default function RegisterPage() {
               onChange={(e) => setPassword2(e.target.value)}
               required fullWidth
               autoComplete="new-password"
+            />
+            <Alert severity="info">
+              {t('cdseInfo')}{' '}
+              <Link
+                href="https://shapps.dataspace.copernicus.eu/dashboard/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {t('cdseInfoLink')}
+              </Link>
+            </Alert>
+            <TextField
+              label={t('cdseClientId')}
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              required fullWidth
+              autoComplete="off"
+            />
+            <TextField
+              label={t('cdseClientSecret')}
+              type="password"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+              required fullWidth
+              autoComplete="off"
             />
             {error && <Alert severity="error">{error}</Alert>}
             <Button

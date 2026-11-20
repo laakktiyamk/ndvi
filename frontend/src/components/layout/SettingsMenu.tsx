@@ -9,12 +9,17 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import LanguageIcon from '@mui/icons-material/Language';
 
+import { useNavigate } from 'react-router-dom';
+import KeyIcon from '@mui/icons-material/Key';
+
 interface Props {
   themeMode: 'light' | 'dark';
   onToggleTheme: () => void;
 }
 
 export default function SettingsMenu({ themeMode, onToggleTheme }: Props) {
+
+  const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -60,6 +65,10 @@ export default function SettingsMenu({ themeMode, onToggleTheme }: Props) {
           <ListItemText primary={t('language')} />
         </MenuItem>
         <Divider />
+        <MenuItem onClick={() => { navigate('/settings'); handleClose(); }}>
+          <ListItemIcon><KeyIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary={t('settings_cdse_title')} />
+        </MenuItem>
       </Menu>
     </>
   );

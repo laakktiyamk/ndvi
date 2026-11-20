@@ -12,6 +12,8 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 import NewFieldDialog from '../fields/NewFieldDialog';
+import { useOpenNewField } from '../../hooks/useOpenNewField';
+import CdseNotConnectedSnackbar from '../fields/CdseNotConnectedSnackbar';
 
 const DRAWER_WIDTH = 240;
 
@@ -47,6 +49,7 @@ export default function NavDrawer({ open, onClose, isMobile, navOpen, onNavOpen 
   const hasField = !!(selectedFieldId || activeGeometryHash);
 
   const [newFieldOpen, setNewFieldOpen] = useState(false);
+  const { tryOpen, notConnected, dismiss } = useOpenNewField(() => setNewFieldOpen(true));
 
   const handleNavClick = (path: string) => {
     if (path === '/fields') {
@@ -59,7 +62,7 @@ export default function NavDrawer({ open, onClose, isMobile, navOpen, onNavOpen 
   };
 
   const handleNewField = () => {
-    setNewFieldOpen(true);
+    void tryOpen();
     if (isMobile) onClose();
   };
 
@@ -127,21 +130,17 @@ export default function NavDrawer({ open, onClose, isMobile, navOpen, onNavOpen 
     </Box>
   );
 
-  if (isMobile) {
-    return (
-      <Drawer
-        variant="temporary"
-        open={open}
-        onClose={onClose}
-        ModalProps={{ keepMounted: true }}
-        sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' } }}
-      >
-        {drawerContent}
-      </Drawer>
-    );
-  }
-
-  return (
+  const drawer = isMobile ? (
+    <Drawer
+      variant="temporary"
+      open={open}
+      onClose={onClose}
+      ModalProps={{ keepMounted: true }}
+      sx={{ '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' } }}
+    >
+      {drawerContent}
+    </Drawer>
+  ) : (
     <Drawer
       variant="persistent"
       open={navOpen}
@@ -159,5 +158,12 @@ export default function NavDrawer({ open, onClose, isMobile, navOpen, onNavOpen 
     >
       {drawerContent}
     </Drawer>
+  );
+
+  return (
+    <>
+      {drawer}
+      <CdseNotConnectedSnackbar open={notConnected} onClose={dismiss} />
+    </>
   );
 }

@@ -4,20 +4,21 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField,
   Button, Alert, CircularProgress, Link, Divider,
-  ToggleButton, ToggleButtonGroup,
+  ToggleButton, ToggleButtonGroup, Stack
 } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import { login } from '../services/authService';
 import { useAuthStore } from '../store/authStore';
+import { getApiErrorMessage } from '../utils/apiError';
 
 export default function LoginPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
-  const [email, setEmail]       = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +29,7 @@ export default function LoginPage() {
       setAuth(res.data.token, res.data.user);
       navigate('/');
     } catch (err: unknown) {
-      if (err instanceof Error) setError(err.message);
-      else setError(t('fetchFailed'));
+      setError(getApiErrorMessage(err, t));
     } finally {
       setLoading(false);
     }
@@ -92,9 +92,14 @@ export default function LoginPage() {
           </Box>
         </Box>
         <Divider sx={{ my: 3 }} />
-        <Typography variant="body2" sx={{ textAlign: 'center' }}>
-          <Link component={RouterLink} to="/register">{t('register')}</Link>
-        </Typography>
+        <Stack direction="row" spacing={2} sx={{ justifyContent: 'center', alignItems: 'center' }}>
+          <Link component={RouterLink} to="/forgot-password" variant="body2">
+            {t('login_forgot_link')}
+          </Link>
+          <Button component={RouterLink} to="/register" size="small" variant="outlined">
+            {t('register')}
+          </Button>
+        </Stack>
       </Paper>
     </Box>
   );

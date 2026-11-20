@@ -1,37 +1,60 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Alert, Box, CircularProgress, Container, Link, Typography } from '@mui/material';
+import { verifyEmail } from '../services/authService';
+import { getApiErrorMessage } from '../utils/apiError';
 
-const API_BASE = import.meta.env.VITE_API_URL;
-
-type Status = "loading" | "success" | "error";
+type Status = 'loading' | 'success' | 'error';
 
 export default function VerifyEmailPage() {
-  const [status, setStatus] = useState<Status>("loading");
+  const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+
+  const [status, setStatus] = useState<Status>(token ? 'loading' : 'error');
+  const [error, setError] = useState<string | null>(token ? null : t('verify_failed'));
+  const started = useRef(false);
 
   useEffect(() => {
-    const token = new URLSearchParams(window.location.search).get("token");
-    if (!token) {
-      setStatus("error");
-      return;
-    }
+    if (!token || started.current) return;
+    started.current = true;
 
-    // Poistetaan token osoiterivistä heti, ettei se jää selainhistoriaan
-    window.history.replaceState({}, "", window.location.pathname);
+    // Poistetaan token osoiterivistä, ettei se jää selainhistoriaan
+    window.history.replaceState({}, '', window.location.pathname);
 
-    fetch(`${API_BASE}/api/user/verify-email`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    })
-      .then((res) => setStatus(res.ok ? "success" : "error"))
-      .catch(() => setStatus("error"));
-  }, []);
+    verifyEmail(token)
+      .then(() => setStatus('success'))
+      .catch((err) => {
+        setError(getApiErrorMessage(err, t));
+        setStatus('error');
+      });
+  }, [token, t]);
 
-  if (status === "loading") return <p>Vahvistetaan...</p>;
-  if (status === "success")
-    return (
-      <p>
-        Sähköposti vahvistettu. <a href="/login">Kirjaudu sisään</a>
-      </p>
-    );
-  return <p>Linkki on virheellinen tai vanhentunut.</p>;
+  return (
+    <Container maxWidth="xs" sx={{ mt: 8 }}>
+      {status === 'loading' && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <CircularProgress size={24} />
+          <Typography>{t('verify_loading')}</Typography>
+        </Box>
+      )}
+
+      {status === 'success' && (
+        <Alert severity="success">{t('verify_success')}</Alert>
+      )}
+
+      {status === 'error' && (
+        <Alert severity="error">{error ?? t('verify_failed')}</Alert>
+      )}
+
+      {status !== 'loading' && (
+        <Box sx={{ mt: 2 }}>
+          <Link component={RouterLink} to="/login">
+            {t('verify_go_login')}
+          </Link>
+        </Box>
+      )}
+    </Container>
+  );
 }
