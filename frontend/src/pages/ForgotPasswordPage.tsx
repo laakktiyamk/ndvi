@@ -5,19 +5,20 @@ import { Alert, Box, Button, Container, Link, TextField, Typography } from '@mui
 import { forgotPassword } from '../services/authService';
 import { getApiErrorMessage } from '../utils/apiError';
 
+
 export default function ForgotPasswordPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
     try {
-      await forgotPassword(email);
+      await forgotPassword(email, i18n.language.startsWith('fi') ? 'fi' : 'en');
       setDone(true);
     } catch (err) {
       setError(getApiErrorMessage(err, t));

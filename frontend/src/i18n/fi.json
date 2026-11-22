@@ -249,5 +249,21 @@
   "settings_cdse_deleted": "Tunnukset poistettu.",
   "settings_cdse_delete_title": "Poistetaanko tunnukset?",
   "settings_cdse_delete_text": "Tunnukset poistetaan palvelusta. Uutta NDVI-dataa ei voi hakea ennen kuin lisäät ne uudelleen. Jo haettu data säilyy.",
-  "settings_cancel": "Peruuta"
+  "settings_cancel": "Peruuta",
+  "settings_account_title": "Käyttäjätili",
+  "settings_account_delete_hint": "Tilin poisto poistaa käyttäjätietosi, CDSE-tunnuksesi ja peltosi. Jos pelto on myös jonkun toisen käyttäjän listalla, sen NDVI- ja säätiedot säilyvät hänellä.",
+  "settings_account_delete": "Poista tili",
+  "settings_account_delete_title": "Poistetaanko tili pysyvästi?",
+  "settings_account_delete_text": "Tätä ei voi perua. Vahvista poisto syöttämällä salasanasi.",
+  "settings_account_deleted_title": "Tili poistettu",
+  "settings_account_deleted_ok": "OK",
+  "settings_account_password": "Salasana",
+  "login_account_deleted": "Tilisi on poistettu.",
+  "settings_menu_account": "Tili ja CDSE-tunnukset",
+  "pw_rule_length": "Vähintään 8 merkkiä",
+  "pw_rule_lower": "Pieni kirjain (a–z)",
+  "pw_rule_upper": "Iso kirjain (A–Z)",
+  "pw_rule_number": "Numero (0–9)",
+  "pw_rule_special": "Erikoismerkki: # ? ! & @ $ % ^ * _ -",
+  "pw_rules_not_met": "Salasana ei täytä kaikkia vaatimuksia."  
 }

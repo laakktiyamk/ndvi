@@ -5,11 +5,12 @@ import { Link as RouterLink } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField,
   Button, Alert, CircularProgress, Link, Divider,
-  ToggleButton, ToggleButtonGroup,
+  ToggleButton, ToggleButtonGroup, Collapse,
 } from '@mui/material';
 import GrassIcon from '@mui/icons-material/Grass';
 import { register } from '../services/authService';
 import { getApiErrorMessage } from '../utils/apiError';
+import PasswordRequirements, { isPasswordValid } from '../components/PasswordRequirements';
 
 export default function RegisterPage() {
   const { t, i18n } = useTranslation();
@@ -18,6 +19,7 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
+  const [pwFocused, setPwFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +31,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isPasswordValid(password)) { setError(t('pw_rules_not_met')); return; }
     if (password !== password2) { setError(t('passwordMismatch')); return; }
     setLoading(true);
     setError(null);
@@ -97,9 +100,14 @@ export default function RegisterPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onFocus={() => setPwFocused(true)}
+              onBlur={() => setPwFocused(false)}
               required fullWidth
               autoComplete="new-password"
             />
+            <Collapse in={pwFocused || password.length > 0} unmountOnExit>
+              <PasswordRequirements password={password} />
+            </Collapse>
             <TextField
               label={t('passwordAgain')}
               type="password"

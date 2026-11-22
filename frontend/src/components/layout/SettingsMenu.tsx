@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import {
   IconButton, Menu, MenuItem,
   ListItemIcon, ListItemText, Divider, Tooltip,
@@ -8,9 +9,7 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import LanguageIcon from '@mui/icons-material/Language';
-
-import { useNavigate } from 'react-router-dom';
-import KeyIcon from '@mui/icons-material/Key';
+import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 
 interface Props {
   themeMode: 'light' | 'dark';
@@ -18,7 +17,6 @@ interface Props {
 }
 
 export default function SettingsMenu({ themeMode, onToggleTheme }: Props) {
-
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -66,8 +64,8 @@ export default function SettingsMenu({ themeMode, onToggleTheme }: Props) {
         </MenuItem>
         <Divider />
         <MenuItem onClick={() => { navigate('/settings'); handleClose(); }}>
-          <ListItemIcon><KeyIcon fontSize="small" /></ListItemIcon>
-          <ListItemText primary={t('settings_cdse_title')} />
+          <ListItemIcon><ManageAccountsIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary={t('settings_menu_account')} />
         </MenuItem>
       </Menu>
     </>

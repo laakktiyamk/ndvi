@@ -249,5 +249,21 @@
   "settings_cdse_deleted": "Credentials deleted.",
   "settings_cdse_delete_title": "Delete credentials?",
   "settings_cdse_delete_text": "Your credentials will be removed from the service. New NDVI data cannot be fetched until you add them again. Data already fetched is kept.",
-  "settings_cancel": "Cancel"
+  "settings_cancel": "Cancel",
+  "settings_account_title": "Account",
+  "settings_account_delete_hint": "Deleting your account removes your user data, CDSE credentials and fields. If another user also has a field on their list, its NDVI and weather data are kept for them.",
+  "settings_account_delete": "Delete account",
+  "settings_account_delete_title": "Delete account permanently?",
+  "settings_account_delete_text": "This cannot be undone. Enter your password to confirm.",
+  "settings_account_deleted_title": "Account deleted",
+  "settings_account_deleted_ok": "OK",
+  "settings_account_password": "Password",
+  "login_account_deleted": "Your account has been deleted.",
+  "settings_menu_account": "Account & CDSE credentials",
+  "pw_rule_length": "At least 8 characters",
+  "pw_rule_lower": "Lowercase letter (a–z)",
+  "pw_rule_upper": "Uppercase letter (A–Z)",
+  "pw_rule_number": "Number (0–9)",
+  "pw_rule_special": "Special character: # ? ! & @ $ % ^ * _ -",
+  "pw_rules_not_met": "The password does not meet all requirements."
 }   

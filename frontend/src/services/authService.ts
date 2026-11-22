@@ -47,8 +47,8 @@ interface CodeResponse {
   code: string;
 }
 
-export const forgotPassword = (email: string) =>
-  apiClient.post<MessageResponse>('/api/user/forgot-password', { email });
+export const forgotPassword = (email: string, lang: string) =>
+  apiClient.post<MessageResponse>('/api/user/forgot-password', { email, lang });
 
 export const resetPassword = (token: string, password: string) =>
   apiClient.patch<MessageResponse>('/api/user/reset-password', { token, password });
@@ -64,3 +64,15 @@ export const updateCdseCredentials = (clientId: string, clientSecret: string) =>
 
 export const deleteCdseCredentials = () =>
   apiClient.delete<CodeResponse>('/api/user/cdse-credentials');
+
+/**
+ * Poistaa kirjautuneen käyttäjän tilin pysyvästi.
+ *
+ * @remarks
+ * Axiosissa DELETE-pyynnön body annetaan `data`-kentässä,
+ * koska `axios.delete` ei ota bodya toisena parametrina.
+ *
+ * @param password - Käyttäjän nykyinen salasana vahvistukseksi
+ */
+export const deleteAccount = (password: string) =>
+  apiClient.delete('/api/user', { data: { password } });
