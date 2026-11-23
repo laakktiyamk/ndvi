@@ -38,6 +38,7 @@ export default function FieldsPage() {
     startDate,
     newFieldAdded,
     setNewFieldAdded,
+    setImageExpanded,
   } = useAppStore();
 
   const [listOpen, setListOpen] = useState(true);
@@ -69,9 +70,14 @@ export default function FieldsPage() {
     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [selectedFieldId, fields]);
 
+  // Navin Fields-painike: suljetaan kuvan suurennus ja avataan lista.
+  // location.key vaihtuu joka navigoinnissa, myös kun ollaan jo /fields-reitillä.
   useEffect(() => {
-    if (location.state?.openList) setListOpen(true);
-  }, [location.state]);
+    if (location.state?.openList) {
+      setListOpen(true);
+      setImageExpanded(false);
+    }
+  }, [location.key]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);

@@ -44,6 +44,7 @@ interface AppState {
   // ── UI-tila ──────────────────────────────────────
   newFieldAdded: boolean;
   selectedYear: number | null; // UUSI: NDVI-kuvien ja sään yhteinen vuosi
+  imageExpanded: boolean;      // NDVI-kuvan suurennus (desktop)
 
   // ── Actionit ─────────────────────────────────────
   fetchFields: () => Promise<void>;
@@ -66,6 +67,7 @@ interface AppState {
   setStartDate: (d: string) => void;
   setNewFieldAdded: (v: boolean) => void;
   setSelectedYear: (year: number | null) => void; // UUSI
+  setImageExpanded: (v: boolean) => void;
   resetFields: () => void;
   // ── Kasvulohkot ──────────────────────────────────
   cropParcels: ICropParcel[];
@@ -105,6 +107,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   newFieldAdded: false,
   selectedYear: null, // UUSI
+  imageExpanded: false,
 
   fetchFields: async () => {
     if (get().fieldsFetched) return;
@@ -269,6 +272,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   setStartDate: (d) => set({ startDate: d }),
   setNewFieldAdded: (v) => set({ newFieldAdded: v }),
   setSelectedYear: (year) => set({ selectedYear: year }), // UUSI
+  setImageExpanded: (v) => set({ imageExpanded: v }),
 
   resetFields: () =>
     set({
@@ -288,6 +292,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       startDate: `${new Date().getFullYear()}-04-01`,
       newFieldAdded: false,
       selectedYear: null, // UUSI
+      imageExpanded: false,
       cropParcelsCache: {},
     }),
 

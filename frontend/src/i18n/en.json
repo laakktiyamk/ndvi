@@ -265,5 +265,8 @@
   "pw_rule_upper": "Uppercase letter (A–Z)",
   "pw_rule_number": "Number (0–9)",
   "pw_rule_special": "Special character: # ? ! & @ $ % ^ * _ -",
-  "pw_rules_not_met": "The password does not meet all requirements."
+  "pw_rules_not_met": "The password does not meet all requirements.",
+  "startYear": "Start year",
+  "startYearHelper": "Data is fetched from {{date}} onwards",
+  "err_INVALID_START_DATE": "Invalid start date (earliest 1 April 2020)."
 }   

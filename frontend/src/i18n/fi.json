@@ -265,5 +265,8 @@
   "pw_rule_upper": "Iso kirjain (A–Z)",
   "pw_rule_number": "Numero (0–9)",
   "pw_rule_special": "Erikoismerkki: # ? ! & @ $ % ^ * _ -",
-  "pw_rules_not_met": "Salasana ei täytä kaikkia vaatimuksia."  
+  "pw_rules_not_met": "Salasana ei täytä kaikkia vaatimuksia.",
+  "startYear": "Aloitusvuosi",
+  "startYearHelper": "Data haetaan {{date}} alkaen",
+  "err_INVALID_START_DATE": "Aloituspäivä ei kelpaa (aikaisintaan 1.4.2020)."
 }

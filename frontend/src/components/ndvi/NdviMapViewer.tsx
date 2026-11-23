@@ -119,7 +119,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   //const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  // Suurennustila storessa, jotta navin Fields-painike voi sulkea sen
+  const isFullscreen = useAppStore(s => s.imageExpanded);
+  const setIsFullscreen = useAppStore(s => s.setImageExpanded);
   const [imageBoxEl, setImageBoxEl] = useState<HTMLDivElement | null>(null);
   const imageBoxRef = useCallback((el: HTMLDivElement | null) => {
     setImageBoxEl(el);
@@ -152,6 +154,9 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const selectedDate = filteredImages.length > 0
     ? new Date(filteredImages[Math.min(index, filteredImages.length - 1)].generationtime)
     : null;
+
+  // ── Suurennus pois kun näkymästä poistutaan ───────
+  useEffect(() => () => setIsFullscreen(false), []);
 
   // ── Nollataan valittu lohko kun pelto vaihtuu ─────
   useEffect(() => {
@@ -355,7 +360,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
         </Typography>
         {!isMobile && (
           <IconButton
-            onClick={() => setIsFullscreen(v => !v)}
+            onClick={() => setIsFullscreen(!isFullscreen)}
             size="small"
             sx={{ ml: 'auto' }}
             aria-label={isFullscreen ? t('fullscreenClose') : t('fullscreenOpen')}
@@ -640,8 +645,11 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
         {imageViewer}
       </Paper>
 
-      {!isFullscreen && (
-        <Box sx={{ flex: '0 0 35%', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+      {/* Piilotetaan display:none eikä unmountata, jotta aktiivinen välilehti säilyy */}
+      <Box sx={{
+        flex: '0 0 35%', height: '100%', minHeight: 0,
+        display: isFullscreen ? 'none' : 'flex', flexDirection: 'column',
+      }}>
           <NdviViewPanel
             fieldId={fieldId}
             fieldName={fieldName}
@@ -655,8 +663,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             selectedTunnus={selectedTunnus}
             onSelectField={setSelectedTunnus}
           />
-        </Box>
-      )}
+      </Box>
 
       {filmrollDialog}
     </Box>
