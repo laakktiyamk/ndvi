@@ -269,5 +269,6 @@
   "pw_rules_not_met": "The password does not meet all requirements.",
   "startYear": "Start year",
   "startYearHelper": "Data is fetched from {{date}} onwards",
-  "err_INVALID_START_DATE": "Invalid start date (earliest 1 April 2020)."
+  "err_INVALID_START_DATE": "Invalid start date (earliest 1 April 2020).",
+  "about": "About"
 }   

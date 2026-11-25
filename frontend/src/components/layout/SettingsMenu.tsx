@@ -10,6 +10,9 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import LanguageIcon from '@mui/icons-material/Language';
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { About } from '../about/About';
+
 
 interface Props {
   themeMode: 'light' | 'dark';
@@ -20,6 +23,7 @@ export default function SettingsMenu({ themeMode, onToggleTheme }: Props) {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const open = Boolean(anchorEl);
   const handleClose = () => setAnchorEl(null);
 
@@ -30,7 +34,7 @@ export default function SettingsMenu({ themeMode, onToggleTheme }: Props) {
     handleClose();
   };
 
-  return (
+    return (
     <>
       <Tooltip title={t('settings')}>
         <IconButton
@@ -67,7 +71,13 @@ export default function SettingsMenu({ themeMode, onToggleTheme }: Props) {
           <ListItemIcon><ManageAccountsIcon fontSize="small" /></ListItemIcon>
           <ListItemText primary={t('settings_menu_account')} />
         </MenuItem>
+        <Divider />
+        <MenuItem onClick={() => { setAboutOpen(true); handleClose(); }}>
+          <ListItemIcon><InfoOutlinedIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary={t('about')} />
+        </MenuItem>
       </Menu>
+      <About open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </>
   );
 }

@@ -1,0 +1,56 @@
+{
+  "header": {
+    "title": "NDVI Monitor",
+    "subtitle": "Timo Laakkonen · JAMK YAMK Thesis"
+  },
+  "heading": "About the Application",
+  "description": "A full-stack application for monitoring agricultural fields with the Normalized Difference Vegetation Index (NDVI) computed from Sentinel-2 satellite imagery. The system combines Finnish open field parcel data, weather data and a serverless AWS backend to give a fast, low-cost overview of the growing season.",
+  "featureGroups": [
+    {
+      "title": "NDVI & Satellite Data",
+      "items": [
+        "Sentinel-2 imagery via Copernicus Data Space Ecosystem (CDSE)",
+        "NDVI statistics and 9-class colour-coded NDVI images",
+        "NDVI timeline and year-to-year comparison charts",
+        "Weather data from Open-Meteo"
+      ]
+    },
+    {
+      "title": "Fields & Crop Parcels",
+      "items": [
+        "Field selection from map, municipality search or GeoJSON upload",
+        "Multiple fields in one upload",
+        "Crop parcel history 2020–2025 (Finnish Food Authority open data)",
+        "NDVI per crop parcel"
+      ]
+    },
+    {
+      "title": "Users & Security",
+      "items": [
+        "Registration with email verification",
+        "Password reset",
+        "Per-user CDSE credentials, encrypted (AES-256-GCM)",
+        "Account deletion"
+      ]
+    },
+    {
+      "title": "Architecture",
+      "items": [
+        "AWS Lambda, API Gateway and Step Functions",
+        "Real-time job progress via WebSocket",
+        "MongoDB Atlas and Azure Cosmos DB for MongoDB",
+        "Frontend hosted on S3 + CloudFront"
+      ]
+    },
+    {
+      "title": "UI & UX",
+      "items": [
+        "React, TypeScript and Material UI",
+        "Mobile-first layout",
+        "Dark and light themes",
+        "English & Finnish",
+        "Built-in user manual"
+      ]
+    }
+  ]
+}
