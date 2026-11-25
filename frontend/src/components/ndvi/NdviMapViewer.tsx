@@ -29,6 +29,7 @@ import LocationTab from './tabs/LocationTab';
 import VegetationDistribution from './VegetationDistribution';
 import CropFieldsOverlay, { getFieldColorMap } from './CropFieldsOverlay';
 import NdviFilmrollDialog from './NdviFilmrollDialog';
+import { cropParcelKey, buildCropParcelSeries } from '../../utils/cropParcelChartUtils';
 
 interface Props {
   fieldId: string;
@@ -114,9 +115,13 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const fmt = getFmt(i18n.language);
+  const numLocale = i18n.language === 'fi' ? 'fi-FI' : 'en-GB';
+  const fmtHa = (v: number | string) =>
+    Number(v).toLocaleString(numLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtNdvi = (v: number) =>
+    v.toLocaleString(numLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const currentYear = new Date().getFullYear();
-  //const [selectedYear, setSelectedYear] = useState<number>(currentYear);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
   // Suurennustila storessa, jotta navin Fields-painike voi sulkea sen
@@ -133,14 +138,17 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
   const preloadRef = useRef<HTMLImageElement | null>(null);
 
   // ── Kasvulohko-overlay ────────────────────────────
-  const [selectedTunnus, setSelectedTunnus] = useState<string | null>(null);
+  // Valinta elää storessa (selectedParcelKey), jotta kuva, kartta ja chart
+  // näkevät saman valinnan. Avain: cropParcelKey(peruslohkotunnus, lohkonumero).
+  const selectedParcelKey = useAppStore(s => s.selectedParcelKey);
+  const toggleSelectedParcel = useAppStore(s => s.toggleSelectedParcel);
   const [imageSize, setImageSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const [naturalSize, setNaturalSize] = useState<{ w: number; h: number } | null>(null);
 
   // ── Filmroll-dialogi ──────────────────────────────
   const [filmrollOpen, setFilmrollOpen] = useState(false);
 
-  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData, cropParcels, setSelectedYear, fetchCropParcelsForYear } = useAppStore();
+  const { ndviEntries, imagesLoading, imagesError, activeGeometryHash, weatherData, cropParcels, cropParcelStats, setSelectedYear, fetchCropParcelsForYear } = useAppStore();
   const selectedYear = useAppStore(s => s.selectedYear) ?? currentYear;
 
   const loading = imagesLoading && activeGeometryHash !== fieldId;
@@ -160,7 +168,7 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
 
   // ── Nollataan valittu lohko kun pelto vaihtuu ─────
   useEffect(() => {
-    setSelectedTunnus(null);
+    toggleSelectedParcel(null);
   }, [fieldId]);
 
   // ── Seurataan imageBoxin kokoa ResizeObserverilla ─
@@ -307,6 +315,15 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
 
   const fieldColors = getFieldColorMap(cropParcels);
 
+  // ── Kasvulohkojen NDVI-keskiarvo näytetyn kuvan päivältä ──
+  // avain → mean; puuttuu, jos lohkolla ei ole arvoa tältä päivältä
+  const currentDay = current.generationtime.slice(0, 10);
+  const parcelMeans = new Map(
+    buildCropParcelSeries(cropParcelStats, selectedYear)
+      .map(s => [s.key, s.values.get(currentDay)] as const)
+      .filter((e): e is readonly [string, number] => e[1] != null)
+  );
+
   // ── Filmroll-dialogi (jaettu mobiili- ja desktop-näkymän kesken) ──
   const filmrollDialog = (
     <NdviFilmrollDialog
@@ -404,7 +421,6 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
               width: '100%', height: '100%',
               objectFit: 'contain',
               pointerEvents: 'none',
-              //imageRendering: 'auto',
               imageRendering: 'pixelated',
             }}
           />
@@ -422,8 +438,8 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
                 maxX: current.image!.image.maxX,
                 maxY: current.image!.image.maxY,
               }}
-              selectedTunnus={selectedTunnus}
-              onSelect={setSelectedTunnus}
+              selectedKey={selectedParcelKey}
+              onSelect={toggleSelectedParcel}
               width={imageSize.width}
               height={imageSize.height}
               offsetX={rect.offsetX}
@@ -490,22 +506,24 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
       {cropParcels.length > 0 && (
         <Box sx={{ p: 1, display: 'flex', gap: 1, flexWrap: 'wrap', borderTop: 1, borderColor: 'divider' }}>
           {cropParcels.map(p => {
-            const isSelected = selectedTunnus === p.tunnus;
+            const key = cropParcelKey(p);
+            const isSelected = selectedParcelKey === key;
+            const mean = parcelMeans.get(key);
             return (
               <Chip
-                key={p.tunnus}
+                key={key}
                 icon={
                   <Box
                     sx={{
                       width: 10, height: 10, borderRadius: '50%',
-                      bgcolor: fieldColors[p.tunnus], ml: '6px', flexShrink: 0,
+                      bgcolor: fieldColors[key], ml: '6px', flexShrink: 0,
                     }}
                   />
                 }
-                label={`${p.lohkonumero} · ${t(`crop:${p.kasvikoodi}`)} · ${p.pinta_ala} ha${p.luomuviljely === '1' ? ' 🌿' : ''}`}
+                label={`${p.lohkonumero} · ${t(`crop:${p.kasvikoodi}`)} · ${fmtHa(p.pinta_ala)} ha${p.luomuviljely === '1' ? ' 🌿' : ''}${mean != null ? ` · NDVI ${fmtNdvi(mean)}` : ''}`}
                 size="small"
-                onClick={() => setSelectedTunnus(cur => cur === p.tunnus ? null : p.tunnus)}
-                onDelete={isSelected ? () => setSelectedTunnus(null) : undefined}
+                onClick={() => toggleSelectedParcel(key)}
+                onDelete={isSelected ? () => toggleSelectedParcel(null) : undefined}
                 color={isSelected ? 'primary' : 'default'}
                 variant={isSelected ? 'filled' : 'outlined'}
               />
@@ -603,8 +621,8 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             selectedIndex={index}
             onSelect={setIndex}
             cropParcels={cropParcels}
-            selectedTunnus={selectedTunnus}
-            onSelectField={setSelectedTunnus}
+            selectedParcelKey={selectedParcelKey}
+            onSelectParcel={toggleSelectedParcel}
           />
         </LeafletAccordion>
 
@@ -660,8 +678,8 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
             selectedIndex={index}
             onSelect={setIndex}
             cropParcels={cropParcels}
-            selectedTunnus={selectedTunnus}
-            onSelectField={setSelectedTunnus}
+            selectedParcelKey={selectedParcelKey}
+            onSelectParcel={toggleSelectedParcel}
           />
       </Box>
 

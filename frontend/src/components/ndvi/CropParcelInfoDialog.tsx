@@ -14,20 +14,26 @@ interface Props {
 
 // Käyttöesimerkki NdviMapViewerissa (ei vielä kytketty):
 //
-//   const [infoTunnus, setInfoTunnus] = useState<string | null>(null);
-//   const infoField = cropParcels.find(p => p.tunnus === infoTunnus) ?? null;
+//   const [infoKey, setInfoKey] = useState<string | null>(null);
+//   const infoField = cropParcels.find(p => cropParcelKey(p) === infoKey) ?? null;
 //   ...
 //   <CropParcelInfoDialog
 //     field={infoField}
-//     color={infoField ? fieldColors[infoField.tunnus] : undefined}
-//     onClose={() => setInfoTunnus(null)}
+//     color={infoField ? fieldColors[cropParcelKey(infoField)] : undefined}
+//     onClose={() => setInfoKey(null)}
 //   />
 //
 // Avaus esim. Chipin info-ikonista tai tuplaklikkauksesta polygonissa,
-// erillään pääasiallisesta valinnasta (selectedTunnus).
+// erillään pääasiallisesta valinnasta (selectedParcelKey).
 
 export default function CropParcelInfoDialog({ field, color, onClose }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+
+  const fmtHa = (v: number | string) =>
+    Number(v).toLocaleString(i18n.language === 'fi' ? 'fi-FI' : 'en-GB', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
 
   return (
     <Dialog open={!!field} onClose={onClose} maxWidth="xs" fullWidth>
@@ -49,7 +55,7 @@ export default function CropParcelInfoDialog({ field, color, onClose }: Props) {
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography variant="body2" color="text.secondary">{t('area') ?? 'Pinta-ala'}</Typography>
-              <Typography variant="body2">{field.pinta_ala} ha</Typography>
+              <Typography variant="body2">{fmtHa(field.pinta_ala)} ha</Typography>
             </Box>
             {field.luomuviljely === '1' && (
               <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>

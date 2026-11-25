@@ -1,4 +1,4 @@
-import { useState, useMemo} from 'react';
+import { useState, useMemo } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -23,12 +23,14 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 5 * 60 * 1000, retry: 1 } },
 });
 
-const getSavedMode = (): 'light' | 'dark' =>
-  (localStorage.getItem('ndvi-theme') as 'light' | 'dark') ?? 'light';
+const getSavedMode = (): 'light' | 'dark' => {
+  const saved = localStorage.getItem('ndvi-theme');
+  return saved === 'light' || saved === 'dark' ? saved : 'dark';
+};
 
 export default function App() {
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>(getSavedMode);
-  
+
   const toggleTheme = () => {
     const next = themeMode === 'light' ? 'dark' : 'light';
     setThemeMode(next);

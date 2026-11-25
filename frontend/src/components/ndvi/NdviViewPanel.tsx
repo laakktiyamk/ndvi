@@ -23,8 +23,9 @@ interface Props {
   onSelect: (index: number) => void;
   // Kasvulohkojen valinta — välitetään edelleen OnMapTabille
   cropParcels?: ICropParcel[];
-  selectedTunnus?: string | null;
-  onSelectField?: (tunnus: string | null) => void;
+  /** Valitun lohkon avain, cropParcelKey() */
+  selectedParcelKey?: string | null;
+  onSelectParcel?: (key: string | null) => void;
 }
 
 type TabKey = 'chart' | 'yearcompare' | 'statistics' | 'onmap' | 'location';
@@ -39,8 +40,8 @@ export default function NdviViewPanel({
   selectedIndex,
   onSelect,
   cropParcels = [],
-  selectedTunnus = null,
-  onSelectField,
+  selectedParcelKey = null,
+  onSelectParcel,
 }: Props) {
   const { t, i18n } = useTranslation();
   const [tab, setTab] = useState<TabKey>('chart');
@@ -126,8 +127,8 @@ export default function NdviViewPanel({
             selectedIndex={selectedIndex}
             onSelect={onSelect}
             cropParcels={cropParcels}
-            selectedTunnus={selectedTunnus}
-            onSelectField={onSelectField}
+            selectedParcelKey={selectedParcelKey}
+            onSelectParcel={onSelectParcel}
           />
         )}
 

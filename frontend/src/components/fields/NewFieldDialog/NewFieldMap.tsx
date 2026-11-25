@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, useMapEvents, Polygon, useMap, GeoJSON } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 //import type { CropParcel } from './types';
@@ -48,6 +48,32 @@ function ZoomWatcher({ onZoomChange }: { onZoomChange: (zoom: number) => void })
   useEffect(() => { onZoomChange(map.getZoom()); }, []);
   return null;
 }
+
+// ─── ViewportWatcher ─────────────────────────────────────────────────────────
+// Kutsuu onViewportChange vasta kun kartta on ollut paikallaan `delay` ms
+
+function ViewportWatcher({ onViewportChange, delay = 300 }: {
+  onViewportChange: () => void;
+  delay?: number;
+}) {
+  const timer = useRef<number | undefined>(undefined);
+  const cb = useRef(onViewportChange);
+  cb.current = onViewportChange;
+
+  useMapEvents({
+    movestart() {
+      window.clearTimeout(timer.current); // liike jatkuu: peru odottava
+    },
+    moveend() {
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => cb.current(), delay);
+    },
+  });
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return null;
+}
+
 // ─── MapRef ──────────────────────────────────────────────────────────────────
 
 function MapRefSetter({ mapRef }: { mapRef: React.MutableRefObject<any> }) {
@@ -85,8 +111,9 @@ interface NewFieldMapProps {
   onZoomChange: (zoom: number) => void;
   onBboxFieldClick: (field: any) => void;
   getCropColor: (kasvikoodi: string) => string;
-  municipalityGeometry?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null;  
+  municipalityGeometry?: GeoJSON.Polygon | GeoJSON.MultiPolygon | null;
   onUserInteract?: () => void;
+  onViewportChange?: () => void;
 }
 
 // ─── Komponentti ─────────────────────────────────────────────────────────────
@@ -106,6 +133,7 @@ export default function NewFieldMap({
   getCropColor,
   municipalityGeometry,
   onUserInteract,
+  onViewportChange,
 }: NewFieldMapProps) {
   const polygonPositions = foundField?.geometry?.coordinates?.[0]?.map(
     ([lon, lat]: [number, number]) => [lat, lon] as [number, number]
@@ -117,10 +145,11 @@ export default function NewFieldMap({
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
         attribution="Esri World Imagery"
       />
-      <MapZoomer center={mapCenter} bounds={mapBounds} />      
+      <MapZoomer center={mapCenter} bounds={mapBounds} />
       <ClickHandler onMapClick={onMapClick} disabled={geojsonPanelOpen} />
       <ZoomWatcher onZoomChange={onZoomChange} />
       {onUserInteract && <InteractionWatcher onInteract={onUserInteract} />}
+      {onViewportChange && <ViewportWatcher onViewportChange={onViewportChange} />}
       <MapRefSetter mapRef={mapRef} />
       {municipalityGeometry && (
         <GeoJSON

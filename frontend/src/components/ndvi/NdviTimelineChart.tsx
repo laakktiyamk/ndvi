@@ -17,6 +17,10 @@ import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import CloseFullscreenIcon from '@mui/icons-material/CloseFullscreen';
 
 import type { MergedNdviEntry } from '../../types';
+import { useAppStore } from '../../store/appStore';
+import { getFieldColorMap } from './CropFieldsOverlay';
+
+import { buildCropParcelSeries, mergeParcelValues} from '../../utils/cropParcelChartUtils';
 
 interface Props {
   entries: MergedNdviEntry[];
@@ -55,16 +59,35 @@ interface Extras {
 export default function NdviTimelineChart({
   entries, selectedIndex, onSelect, chartHeight = 160,
 }: Props) {
+  // ── Hookit aina ennen ensimmäistä ehdollista returnia ──
   const { t, i18n } = useTranslation();
+  const theme = useTheme();
   const [chartType, setChartType] = useState<ChartType>('line');
   const [expanded, setExpanded] = useState(false);
   const [extras, setExtras] = useState<Extras>({ min: false, max: false, std: false });
 
+  const cropParcelStats = useAppStore(s => s.cropParcelStats);
+  const cropParcels = useAppStore(s => s.cropParcels);
+  const selectedParcelKey = useAppStore(s => s.selectedParcelKey);
+  const storeYear = useAppStore(s => s.selectedYear);
+
   if (!entries.length) return null;
 
-  const theme = useTheme();  
+  // Vuosi: storesta, varalla ensimmäisen kuvan vuosi (entries on jo suodatettu vuodella)
+  const year = storeYear ?? new Date(entries[0].generationtime).getFullYear();
 
-  const data = entries.map((e, i) => ({
+  // ── Valitun kasvulohkon sarja ──
+  // Piirretään vain, jos pellolla on useampi kasvulohko: yhden lohkon käyrä
+  // olisi käytännössä sama kuin pellon käyrä.
+  const parcelSeries = cropParcels.length > 1 && selectedParcelKey
+    ? buildCropParcelSeries(cropParcelStats, year).filter(s => s.key === selectedParcelKey)
+    : [];
+    
+  const fieldColors = getFieldColorMap(cropParcels);
+  const parcelLabel = (kasvikoodi: string | undefined, lohkonumero: string) =>
+    `${lohkonumero} · ${kasvikoodi ? t(`crop:${kasvikoodi}`) : ''}`;
+
+  const baseData = entries.map((e, i) => ({
     i,
     date: e.generationtime,
     mean: parseFloat(e.stats.average.toFixed(4)),
@@ -77,6 +100,9 @@ export default function NdviTimelineChart({
     ] as [number, number],
     color: NDVI_COLOR(e.stats.average),
   }));
+
+  // Lohkon arvot samoille riveille (puuttuva päivä → null)
+  const data = mergeParcelValues(baseData, parcelSeries, r => r.date);
 
   const selected = data[selectedIndex];
 
@@ -111,27 +137,63 @@ export default function NdviTimelineChart({
         tick={{ fontSize: 10 }}
         width={36}
       />
-<Tooltip
-  contentStyle={{
-    fontSize: '0.75rem',
-    padding: '4px 8px',
-    lineHeight: 1.4,
-    backgroundColor: theme.palette.background.paper,
-    border: `1px solid ${theme.palette.divider}`,
-    color: theme.palette.text.primary,
-  }}
-  labelStyle={{ fontWeight: 600, marginBottom: 2, color: theme.palette.text.primary }}
-  itemStyle={{ color: theme.palette.text.primary }}
+      <Tooltip
+        contentStyle={{
+          fontSize: '0.75rem',
+          padding: '4px 8px',
+          lineHeight: 1.4,
+          backgroundColor: theme.palette.background.paper,
+          border: `1px solid ${theme.palette.divider}`,
+          color: theme.palette.text.primary,
+        }}
+        labelStyle={{ fontWeight: 600, marginBottom: 2, color: theme.palette.text.primary }}
+        itemStyle={{ color: theme.palette.text.primary }}
         formatter={(value, name) => {
           // stdRange tulee arrayna — näytetään low–high
           if (name === 'stdRange' && Array.isArray(value)) {
             return [`${Number(value[0]).toFixed(3)} – ${Number(value[1]).toFixed(3)}`, '±std'];
           }
+          // Lohkolta puuttuva päivä
+          if (value == null) return ['–', name];
           return [Number(value).toFixed(3), name];
         }}
         labelFormatter={(label) => fmtDate(String(label ?? ''), i18n.language)}
       />
     </>
+  );
+
+  // Valitun lohkon viivat — vain line-moodissa
+  const parcelLines = parcelSeries.map(s => (
+    <Line
+      key={s.key}
+      type="monotone"
+      dataKey={s.key}
+      name={parcelLabel(s.kasvikoodi, s.lohkonumero)}
+      stroke={fieldColors[s.key] ?? theme.palette.info.main}
+      strokeWidth={2}
+      dot={{ r: 2.5, strokeWidth: 0, fill: fieldColors[s.key] ?? theme.palette.info.main }}
+      activeDot={false}
+      connectNulls
+      isAnimationActive={false}
+    />
+  ));
+
+  // Selite valitusta lohkosta otsikkoriville
+  const parcelLegend = chartType === 'line' && parcelSeries.length > 0 && (
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mt: 0.5 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+        <Box sx={{ width: 14, height: 3, bgcolor: '#689F38', borderRadius: 1 }} />
+        <Typography variant="caption" color="text.secondary">{t('field') ?? 'Pelto'}</Typography>
+      </Box>
+      {parcelSeries.map(s => (
+        <Box key={s.key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ width: 14, height: 3, bgcolor: fieldColors[s.key], borderRadius: 1 }} />
+          <Typography variant="caption" color="text.secondary">
+            {parcelLabel(s.kasvikoodi, s.lohkonumero)}
+          </Typography>
+        </Box>
+      ))}
+    </Box>
   );
 
   // Extra-kontrollit — vain line-moodissa
@@ -208,10 +270,14 @@ export default function NdviTimelineChart({
             />
           )}
 
-          {/* avg — pääviiva */}
+          {/* valittu kasvulohko */}
+          {parcelLines}
+
+          {/* avg — pääviiva (piirretään viimeisenä → päällimmäisenä) */}
           <Line
             type="monotone"
             dataKey="mean"
+            name={t('field') ?? 'Pelto'}
             stroke="#689F38"
             strokeWidth={2}
             dot={(props) => {
@@ -282,6 +348,7 @@ export default function NdviTimelineChart({
       </Box>
 
       {extraControls}
+      {parcelLegend}
 
       <ResponsiveContainer width="100%" height={chartHeight}>
         {chartContent}
@@ -298,6 +365,7 @@ export default function NdviTimelineChart({
           <Box>
             <Typography variant="subtitle1">NDVI avg — {t('chart')}</Typography>
             {extraControls}
+            {parcelLegend}
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>{controls}</Box>
         </DialogTitle>

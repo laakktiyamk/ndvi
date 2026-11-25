@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { IField, IWeather, MergedNdviEntry, ICropParcel } from '../types';
+import type { IField, IWeather, MergedNdviEntry, ICropParcel, ICropParcelStats } from '../types';
 import { getFields } from '../services/fieldService';
 import { getDatesForGeometry, fetchImagesByIds } from '../services/ndviService';
 import { getWeatherForGeometry } from '../services/weatherService';
@@ -43,7 +43,7 @@ interface AppState {
 
   // ── UI-tila ──────────────────────────────────────
   newFieldAdded: boolean;
-  selectedYear: number | null; // UUSI: NDVI-kuvien ja sään yhteinen vuosi
+  selectedYear: number | null; // NDVI-kuvien ja sään yhteinen vuosi
   imageExpanded: boolean;      // NDVI-kuvan suurennus (desktop)
 
   // ── Actionit ─────────────────────────────────────
@@ -66,13 +66,20 @@ interface AppState {
   setValidGeoJson: (gj: object | null) => void;
   setStartDate: (d: string) => void;
   setNewFieldAdded: (v: boolean) => void;
-  setSelectedYear: (year: number | null) => void; // UUSI
+  setSelectedYear: (year: number | null) => void;
   setImageExpanded: (v: boolean) => void;
   resetFields: () => void;
+
   // ── Kasvulohkot ──────────────────────────────────
   cropParcels: ICropParcel[];
   cropParcelsCache: Record<string, ICropParcel[]>; // avain: `${fieldId}:${vuosi}`
   fetchCropParcelsForYear: (fieldId: string, year: number) => Promise<void>;
+  /** Kaikki kaudet, suodatus vuodella komponentissa */
+  cropParcelStats: ICropParcelStats[];
+  /** Valittu kasvulohko, avain parcelKey(peruslohkotunnus, lohkonumero) */
+  selectedParcelKey: string | null;
+  /** Toggle: sama avain uudelleen → valinta pois */
+  toggleSelectedParcel: (key: string | null) => void;
 }
 
 const MAX_PARCEL_YEAR = 2025; // uusin vuosi, jolta kasvulohkoja on kannassa
@@ -93,6 +100,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   cropParcels: [],
   cropParcelsCache: {},
+  cropParcelStats: [],
+  selectedParcelKey: null,
   weatherData: [],
   weatherLoading: false,
   weatherError: null,
@@ -106,7 +115,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   startDate: `${new Date().getFullYear()}-04-01`,
 
   newFieldAdded: false,
-  selectedYear: null, // UUSI
+  selectedYear: null,
   imageExpanded: false,
 
   fetchFields: async () => {
@@ -123,12 +132,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-    setSelectedField: (id) => {
+  setSelectedField: (id) => {
     const changed = id !== get().selectedFieldId;
     set({
       selectedFieldId: id,
-      // Uusi pelto → vuosi nollataan, jolloin NdviMapViewer valitsee uusimman
-      ...(changed ? { selectedYear: null } : {}),
+      // Uusi pelto → vuosi ja lohkovalinta nollataan
+      ...(changed ? { selectedYear: null, selectedParcelKey: null } : {}),
     });
     if (!id) return;
     set((state) => ({
@@ -160,6 +169,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         ndviEntries: merged,
         imagesLoading: false,
         cropParcels: field.kasvulohkot ?? [],
+        cropParcelStats: datesRes.cropParcelStats ?? [],
       });
 
       set({ weatherLoading: true, weatherError: null });
@@ -204,6 +214,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         imagesLoading: false,
         fieldsFetched: false,
         cropParcels: cropParcels ?? [],
+        cropParcelStats: datesRes.cropParcelStats ?? [],
+        selectedParcelKey: null,
       });
 
       set({ weatherLoading: true, weatherError: null });
@@ -224,7 +236,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-    fetchCropParcelsForYear: async (fieldId, year) => {
+  fetchCropParcelsForYear: async (fieldId, year) => {
     const queryYear = Math.min(year, MAX_PARCEL_YEAR);
     const key = `${fieldId}:${queryYear}`;
     latestParcelKey = key;
@@ -253,7 +265,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-
   fetchGrowingSeason: async () => {
     set({ growingSeasonLoading: true, growingSeasonError: null });
     try {
@@ -271,8 +282,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   setValidGeoJson: (gj) => set({ validGeoJson: gj }),
   setStartDate: (d) => set({ startDate: d }),
   setNewFieldAdded: (v) => set({ newFieldAdded: v }),
-  setSelectedYear: (year) => set({ selectedYear: year }), // UUSI
+  setSelectedYear: (year) => set({ selectedYear: year }),
   setImageExpanded: (v) => set({ imageExpanded: v }),
+
+  toggleSelectedParcel: (key) =>
+    set((state) => ({
+      selectedParcelKey: key && state.selectedParcelKey !== key ? key : null,
+    })),
 
   resetFields: () =>
     set({
@@ -291,9 +307,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       weatherError: null,
       startDate: `${new Date().getFullYear()}-04-01`,
       newFieldAdded: false,
-      selectedYear: null, // UUSI
+      selectedYear: null,
       imageExpanded: false,
       cropParcelsCache: {},
+      cropParcelStats: [],
+      selectedParcelKey: null,
     }),
 
   deleteField: async (id) => {
@@ -307,6 +325,8 @@ export const useAppStore = create<AppState>((set, get) => ({
           ndviEntries: [],
           cropParcels: [],
           weatherData: [],
+          cropParcelStats: [],
+          selectedParcelKey: null,
         });
       }
 

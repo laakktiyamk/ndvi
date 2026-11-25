@@ -10,6 +10,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { MergedNdviEntry, ICropParcel } from '../../../types';
 import { getFieldColorMap } from '../CropFieldsOverlay';
+import { cropParcelKey } from '../../../utils/cropParcelChartUtils';
 
 interface Props {
   entry: MergedNdviEntry;
@@ -18,21 +19,22 @@ interface Props {
   onSelect: (index: number) => void;
   // Kasvulohkot — valinnaisia, koska paneelia käytetään myös ilman niitä
   cropParcels?: ICropParcel[];
-  selectedTunnus?: string | null;
-  onSelectField?: (tunnus: string | null) => void;
+  /** Valitun lohkon avain, cropParcelKey() */
+  selectedParcelKey?: string | null;
+  onSelectParcel?: (key: string | null) => void;
 }
 
 // Erillinen karttakomponentti — voidaan mountata sekä normaaliin että dialogiin
 function NdviMap({
   entry, padding = [20, 20], zoomOut = 0,
-  cropParcels = [], selectedTunnus = null, onSelectField,
+  cropParcels = [], selectedParcelKey = null, onSelectParcel,
 }: {
   entry: MergedNdviEntry;
   padding?: [number, number];
   zoomOut?: number;
   cropParcels?: ICropParcel[];
-  selectedTunnus?: string | null;
-  onSelectField?: (tunnus: string | null) => void;
+  selectedParcelKey?: string | null;
+  onSelectParcel?: (key: string | null) => void;
 }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);
@@ -113,17 +115,17 @@ function NdviMap({
       type: 'FeatureCollection' as const,
       features: cropParcels.map((p) => ({
         type: 'Feature' as const,
-        properties: { tunnus: p.tunnus },
+        properties: { key: cropParcelKey(p) },
         geometry: p.geometry,
       })),
     };
 
     const layer = L.geoJSON(featureCollection, {
       style: (feature) => {
-        const tunnus = feature!.properties.tunnus as string;
-        const isSelected = tunnus === selectedTunnus;
+        const key = feature!.properties.key as string;
+        const isSelected = key === selectedParcelKey;
         return {
-          color: fieldColors[tunnus],
+          color: fieldColors[key],
           weight: isSelected ? 3 : 1.5,
           fillOpacity: isSelected ? 0.35 : 0,
           dashArray: isSelected ? undefined : '5 3',
@@ -131,14 +133,14 @@ function NdviMap({
       },
       onEachFeature: (feature, lyr) => {
         lyr.on('click', () => {
-          const tunnus = feature.properties.tunnus as string;
-          onSelectField?.(tunnus === selectedTunnus ? null : tunnus);
+          const key = feature.properties.key as string;
+          onSelectParcel?.(key === selectedParcelKey ? null : key);
         });
       },
     }).addTo(map);
 
     cropLayerRef.current = layer;
-  }, [cropParcels, selectedTunnus, onSelectField, mapReady]);
+  }, [cropParcels, selectedParcelKey, onSelectParcel, mapReady]);
 
   return (
     <Box
@@ -149,7 +151,7 @@ function NdviMap({
 }
 
 export default function OnMapTab({
-  entry, cropParcels = [], selectedTunnus = null, onSelectField,
+  entry, cropParcels = [], selectedParcelKey = null, onSelectParcel,
 }: Props) {
   const { t, i18n } = useTranslation();
   const [expanded, setExpanded] = useState(false);
@@ -181,8 +183,8 @@ export default function OnMapTab({
         <NdviMap
           entry={entry}
           cropParcels={cropParcels}
-          selectedTunnus={selectedTunnus}
-          onSelectField={onSelectField}
+          selectedParcelKey={selectedParcelKey}
+          onSelectParcel={onSelectParcel}
         />
       </Box>
 
@@ -215,8 +217,8 @@ export default function OnMapTab({
               entry={entry}
               zoomOut={2}
               cropParcels={cropParcels}
-              selectedTunnus={selectedTunnus}
-              onSelectField={onSelectField}
+              selectedParcelKey={selectedParcelKey}
+              onSelectParcel={onSelectParcel}
             />
           </Box>
         </DialogContent>

@@ -1,6 +1,7 @@
 // components/ndvi/CropFieldsOverlay.tsx
 import { useMemo } from 'react';
 import type { ICropParcel } from '../../types';
+import { cropParcelKey } from '../../utils/cropParcelChartUtils';
 
 interface ImageBbox {
   minX: number;
@@ -12,8 +13,9 @@ interface ImageBbox {
 interface Props {
   fields: ICropParcel[];
   bbox: ImageBbox;
-  selectedTunnus: string | null;
-  onSelect: (tunnus: string | null) => void;
+  /** Valitun lohkon avain, cropParcelKey() */
+  selectedKey: string | null;
+  onSelect: (key: string | null) => void;
   // Koko boxin mitat
   width: number;
   height: number;
@@ -31,21 +33,22 @@ const getRings = (geometry: ICropParcel['geometry']): number[][][] => {
   return (geometry.coordinates as number[][][][]).flat();
 };
 
-// Jaettu väripaletti — käytetään sekä SVG-overlayssa että chip-listassa
-// (NdviMapViewer), jotta väripallo chipissä ja polygonin reunaväri täsmäävät.
+// Jaettu väripaletti — käytetään SVG-overlayssa, kartassa, chip-listassa
+// ja chartissa, jotta lohkon väri täsmää kaikkialla.
 export const CROP_FIELD_COLORS = [
   '#4fc3f7', '#81c784', '#ffb74d', '#f06292',
   '#ce93d8', '#4db6ac', '#fff176', '#ff8a65',
 ];
 
+/** Väri per lohkoavain (cropParcelKey). */
 export function getFieldColorMap(fields: ICropParcel[]): Record<string, string> {
   return Object.fromEntries(
-    fields.map((f, i) => [f.tunnus, CROP_FIELD_COLORS[i % CROP_FIELD_COLORS.length]])
+    fields.map((f, i) => [cropParcelKey(f), CROP_FIELD_COLORS[i % CROP_FIELD_COLORS.length]])
   );
 }
 
 export default function CropFieldsOverlay({
-  fields, bbox, selectedTunnus, onSelect,
+  fields, bbox, selectedKey, onSelect,
   width, height, offsetX, offsetY, imgWidth, imgHeight,
 }: Props) {
   // Koordinaattimuunnos: WGS84 → pikselit kuvan sisällä → siirretään offsetilla
@@ -64,8 +67,9 @@ export default function CropFieldsOverlay({
       style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }}
     >
       {fields.map((field) => {
-        const isSelected = field.tunnus === selectedTunnus;
-        const color = fieldColors[field.tunnus];
+        const key = cropParcelKey(field);
+        const isSelected = key === selectedKey;
+        const color = fieldColors[key];
         const rings = getRings(field.geometry);
 
         return rings.map((ring, ringIdx) => {
@@ -74,7 +78,7 @@ export default function CropFieldsOverlay({
             .join(' ');
 
           return (
-            <g key={`${field.tunnus}-${ringIdx}`}>
+            <g key={`${key}-${ringIdx}`}>
               {/* Leveä näkymätön klikkialue — helpottaa osumista */}
               <polygon
                 points={points}
@@ -82,7 +86,7 @@ export default function CropFieldsOverlay({
                 stroke="transparent"
                 strokeWidth={14}
                 style={{ pointerEvents: 'all', cursor: 'pointer' }}
-                onClick={() => onSelect(isSelected ? null : field.tunnus)}
+                onClick={() => onSelect(isSelected ? null : key)}
               />
               {/* Näkyvä viiva. Tieto valitusta lohkosta näytetään
                   erillisessä infopaneelissa (NdviMapViewer), ei

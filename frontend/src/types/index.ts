@@ -106,3 +106,19 @@ export interface IWeather {
 }
 
 export type Lang = 'fi' | 'en';
+
+/** Yhden päivän NDVI-keskiarvo kasvulohkolle. */
+export interface ICropParcelStatPoint {
+  date: string; // "YYYY-MM-DD"
+  mean: number;
+}
+
+/** Kasvulohkon NDVI-tilastot yhdeltä kaudelta. */
+export interface ICropParcelStats {
+  peruslohkotunnus: string;
+  lohkonumero: string;
+  /** Tilastokausi merkkijonona, esim. "2026" (käyttää 2025:n lohkoja). */
+  vuosi: string;
+  kasvikoodi?: string;
+  stats: ICropParcelStatPoint[];
+}

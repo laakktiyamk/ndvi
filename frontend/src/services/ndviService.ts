@@ -1,5 +1,5 @@
 import { apiClient } from '../api/client';
-import type { NdviImage, DateEntry, ICropParcel } from '../types';
+import type { NdviImage, DateEntry, ICropParcel, ICropParcelStats } from '../types';
 
 export interface DatesResponse {
   id: string;
@@ -8,6 +8,7 @@ export interface DatesResponse {
   area: number;
   dates: DateEntry[];
   kasvulohkot?: ICropParcel[];
+  cropParcelStats?: ICropParcelStats[];
 }
 
 export const getDatesForGeometry = async (

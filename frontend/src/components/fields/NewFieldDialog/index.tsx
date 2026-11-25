@@ -344,6 +344,9 @@ export default function NewFieldDialog({ open, onClose }: Props) {
     setBboxActive(false);
   };
 
+  // Viewport muuttui: pellot jäävät näkyviin, painike palaa "Show fields" -tilaan
+  const handleViewportChange = () => setBboxActive(false);
+
   const handleSearch = async () => {
     if (!searchText.trim()) return;
     setSearching(true);
@@ -674,6 +677,7 @@ export default function NewFieldDialog({ open, onClose }: Props) {
       bboxFields={bboxFields}
       onMapClick={handleMapClick}
       onZoomChange={setCurrentZoom}
+      onViewportChange={handleViewportChange}
       onBboxFieldClick={setFoundField}
       getCropColor={getCropColor}
       clicking={clicking}

@@ -38,8 +38,3 @@ export const createAppTheme = (mode: 'light' | 'dark') =>
       },
     },
   });
-
-// Vanhan nimen säilytys jotta muut importit eivät hajoa ennen päivitystä
-export const theme = createAppTheme('light');
-
-//export type Lang = 'fi' | 'en';

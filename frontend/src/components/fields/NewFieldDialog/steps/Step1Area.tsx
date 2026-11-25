@@ -48,6 +48,7 @@ interface Step1Props {
   bboxFields: any[];
   onMapClick: (lat: number, lon: number) => void;
   onZoomChange: (zoom: number) => void;
+  onViewportChange: () => void;
   onBboxFieldClick: (field: any) => void;
   getCropColor: (kasvikoodi: string) => string;
 
@@ -66,8 +67,8 @@ export default function Step1Area({
   currentZoom, bboxActive, bboxLoading, onSelectAll,
   mapCenter, mapBounds, mapRef, municipalityGeometry,
   foundField, cropParcels, bboxFields,
-  onMapClick, onZoomChange, onBboxFieldClick, getCropColor,
-  
+  onMapClick, onZoomChange, onViewportChange, onBboxFieldClick, getCropColor,
+
   clicking, clickError,
 }: Step1Props) {
   const { t } = useTranslation();
@@ -104,6 +105,7 @@ export default function Step1Area({
             geojsonPanelOpen={geojsonPanelOpen}
             onMapClick={onMapClick}
             onZoomChange={onZoomChange}
+            onViewportChange={onViewportChange}
             onBboxFieldClick={onBboxFieldClick}
             getCropColor={getCropColor}
             onUserInteract={() => setFieldsBtnHidden(false)}
@@ -122,7 +124,7 @@ export default function Step1Area({
         )}
 
         {(() => {
-          
+
           return (
             <Box
               sx={{
@@ -152,7 +154,11 @@ export default function Step1Area({
                       '&:hover': { bgcolor: bboxActive ? undefined : 'background.paper' },
                     }}
                   >
-                    {bboxActive ? t('hideFieldsInView') : t('showFieldsInView')}
+                    {bboxActive
+                      ? t('hideFieldsInView')
+                      : bboxFields.length > 0
+                        ? t('updateFieldsInView') // vanhat pellot kartalla
+                        : t('showFieldsInView')}
                   </Button>
                 )
               ) : (
