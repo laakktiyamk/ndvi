@@ -345,7 +345,17 @@ export default function NewFieldDialog({ open, onClose }: Props) {
   };
 
   // Viewport muuttui: pellot jäävät näkyviin, painike palaa "Show fields" -tilaan
-  const handleViewportChange = () => setBboxActive(false);
+  //const handleViewportChange = () => setBboxActive(false);
+
+    // Viewport muuttui: pellot jäävät näkyviin, painike palaa "Show fields" -tilaan.
+  // Liian kaukana (zoom < 14) vanhat pellot piilotetaan kokonaan.
+  const handleViewportChange = () => {
+    if ((mapRef.current?.getZoom() ?? 0) < 14) {
+      resetBboxFields();
+    } else {
+      setBboxActive(false);
+    }
+  }
 
   const handleSearch = async () => {
     if (!searchText.trim()) return;
