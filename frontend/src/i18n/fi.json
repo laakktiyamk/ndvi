@@ -283,6 +283,8 @@
     "general": "Yleinen",
     "season": "Kausi {{year}}",
     "placeholderGeneral": "Pysyvät asiat, esim. märkä kohta, kivikko, salaojat…",
-    "placeholderSeason": "Kauden tapahtumat, esim. kylvö, lannoitus, niitto…"
+    "placeholderSeason": "Kauden tapahtumat, esim. kylvö, lannoitus, niitto…",
+    "confirmDiscard": "Hylätäänkö tallentamattomat muutokset?",
+    "discard": "Hylkää"
   }
 }

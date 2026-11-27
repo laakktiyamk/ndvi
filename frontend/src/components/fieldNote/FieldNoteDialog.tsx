@@ -11,6 +11,7 @@ import { saveFieldNote, IFieldNotes, INote } from '../../services/fieldNoteServi
 const MAX_LEN = 5000;
 
 type TabKey = 'general' | 'season';
+type Confirm = 'none' | 'clear' | 'discard';
 
 interface Props {
   open: boolean;
@@ -31,6 +32,7 @@ interface Props {
  * @remarks
  * Kummallakin välilehdellä on oma luonnos, joten välilehden vaihto ei hukkaa
  * kirjoitettua tekstiä. Tallenna ja Tyhjennä koskevat aktiivista välilehteä.
+ * Sulkeminen tallentamattomin muutoksin kysyy vahvistuksen.
  * Tyhjä teksti poistaa muistiinpanon backendissä.
  */
 export default function FieldNoteDialog({ open, onClose, aoiId, year, notes, onSaved }: Props) {
@@ -44,7 +46,7 @@ export default function FieldNoteDialog({ open, onClose, aoiId, year, notes, onS
   const [tab, setTab] = useState<TabKey>('season');
   const [drafts, setDrafts] = useState<Record<TabKey, string>>({ general: '', season: '' });
   const [saving, setSaving] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
+  const [confirm, setConfirm] = useState<Confirm>('none');
   const [error, setError] = useState<string | null>(null);
 
   // Alustus aina dialogia avattaessa: kausi oletuksena, ellei se ole tyhjä ja yleinen ei
@@ -53,7 +55,7 @@ export default function FieldNoteDialog({ open, onClose, aoiId, year, notes, onS
     setDrafts({ general: generalNote.text, season: seasonNote.text });
     setTab(!seasonNote.text && generalNote.text ? 'general' : 'season');
     setError(null);
-    setConfirmClear(false);
+    setConfirm('none');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -62,13 +64,24 @@ export default function FieldNoteDialog({ open, onClose, aoiId, year, notes, onS
   const changed = draft.trim() !== current.text;
   const hasNote = current.text.length > 0;
 
+  // Tallentamattomia muutoksia kummalla tahansa välilehdellä
+  const dirty =
+    drafts.general.trim() !== generalNote.text ||
+    drafts.season.trim() !== seasonNote.text;
+
+  /** Kaikki sulkemistavat (X, Peruuta, Esc, tausta) kulkevat tätä kautta. */
   const handleClose = () => {
-    if (!saving) onClose();
+    if (saving) return;
+    if (dirty) {
+      setConfirm('discard');
+      return;
+    }
+    onClose();
   };
 
   const handleTab = (_: unknown, value: TabKey) => {
     setTab(value);
-    setConfirmClear(false);
+    setConfirm('none');
     setError(null);
   };
 
@@ -84,7 +97,7 @@ export default function FieldNoteDialog({ open, onClose, aoiId, year, notes, onS
       setError(t('fieldNote.saveError'));
     } finally {
       setSaving(false);
-      setConfirmClear(false);
+      setConfirm('none');
     }
   };
 
@@ -142,33 +155,46 @@ export default function FieldNoteDialog({ open, onClose, aoiId, year, notes, onS
       </DialogContent>
 
       <DialogActions>
-        {hasNote && (
-          confirmClear ? (
-            <>
-              <Typography variant="body2" sx={{ mr: 'auto', ml: 1 }}>
-                {t('fieldNote.confirmClear')}
-              </Typography>
-              <Button onClick={() => setConfirmClear(false)} disabled={saving}>
-                {t('cancel')}
-              </Button>
-              <Button color="error" onClick={() => save('')} disabled={saving}>
-                {t('fieldNote.clear')}
-              </Button>
-            </>
-          ) : (
-            <Button
-              color="error"
-              onClick={() => setConfirmClear(true)}
-              disabled={saving}
-              sx={{ mr: 'auto' }}
-            >
-              {t('fieldNote.clear')}
+        {confirm === 'discard' && (
+          <>
+            <Typography variant="body2" sx={{ mr: 'auto', ml: 1 }}>
+              {t('fieldNote.confirmDiscard')}
+            </Typography>
+            <Button onClick={() => setConfirm('none')}>
+              {t('cancel')}
             </Button>
-          )
+            <Button color="error" onClick={onClose}>
+              {t('fieldNote.discard')}
+            </Button>
+          </>
         )}
 
-        {!confirmClear && (
+        {confirm === 'clear' && (
           <>
+            <Typography variant="body2" sx={{ mr: 'auto', ml: 1 }}>
+              {t('fieldNote.confirmClear')}
+            </Typography>
+            <Button onClick={() => setConfirm('none')} disabled={saving}>
+              {t('cancel')}
+            </Button>
+            <Button color="error" onClick={() => save('')} disabled={saving}>
+              {t('fieldNote.clear')}
+            </Button>
+          </>
+        )}
+
+        {confirm === 'none' && (
+          <>
+            {hasNote && (
+              <Button
+                color="error"
+                onClick={() => setConfirm('clear')}
+                disabled={saving}
+                sx={{ mr: 'auto' }}
+              >
+                {t('fieldNote.clear')}
+              </Button>
+            )}
             <Button onClick={handleClose} disabled={saving}>
               {t('cancel')}
             </Button>

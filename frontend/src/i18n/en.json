@@ -283,6 +283,8 @@
     "general": "General",
     "season": "Season {{year}}",
     "placeholderGeneral": "Permanent things, e.g. wet spots, stones, drainage…",
-    "placeholderSeason": "Season events, e.g. sowing, fertilizing, mowing…"
+    "placeholderSeason": "Season events, e.g. sowing, fertilizing, mowing…",
+    "confirmDiscard": "Discard unsaved changes?",
+    "discard": "Discard"
   }
 }
