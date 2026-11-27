@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import GlobalStyles from '@mui/material/GlobalStyles';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './i18n/i18n';
@@ -43,6 +44,16 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
+        <GlobalStyles
+          styles={{
+            '.recharts-wrapper, .recharts-wrapper *': {
+              WebkitTapHighlightColor: 'transparent',
+            },
+            '.recharts-wrapper:focus, .recharts-wrapper *:focus, [class^="recharts-zIndex-layer"]:focus': {
+              outline: 'none',
+            },
+          }}
+        />
         <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />

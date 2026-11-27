@@ -184,15 +184,15 @@
     "hectares": "{{value}} ha"
   },
   "vsDate": "vs. {{date}}",
-  "cropStatistics": "Crop types",  
+  "cropStatistics": "Crop types",
   "fieldsCount_one": "{{count}} field",
   "fieldsCount_other": "{{count}} fields",
   "unnamedField": "(unnamed)",
   "failed": "failed",
   "cdseLimitError": "Fetching failed. The Copernicus (CDSE) data service may have reached its usage quota or request limit. Please try again later.",
   "zoomInToSelectFields": "Zoom in to see fields",
-  "showFieldsInView": "Show fields in view", 
-  "updateFieldsInView": "Update fields in view", 
+  "showFieldsInView": "Show fields in view",
+  "updateFieldsInView": "Update fields in view",
   "hideFieldsInView": "Hide fields",
   "noFieldsInView": "No fields in view",
   "searchMunicipality": "Search municipality",
@@ -270,5 +270,15 @@
   "startYear": "Start year",
   "startYearHelper": "Data is fetched from {{date}} onwards",
   "err_INVALID_START_DATE": "Invalid start date (earliest 1 April 2020).",
-  "about": "About"
-}   
+  "about": "About",
+  "field": "Field",
+  "fieldNote": {
+    "tooltip": "Note",
+    "title": "Field note",
+    "placeholder": "Write a note about this field…",
+    "updated": "Edited {{date}}",
+    "clear": "Clear",
+    "confirmClear": "Clear the note?",
+    "saveError": "Saving failed"
+  }
+}

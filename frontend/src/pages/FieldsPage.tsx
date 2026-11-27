@@ -250,21 +250,19 @@ export default function FieldsPage() {
           gap: 1,
           height: { xs: '100%', md: 'auto' },
         }}>
-          {selectedField && !listOpen && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {isMobile && (
-                <Tooltip title={t('showFieldList')}>
-                  <IconButton
-                    onClick={() => setListOpen(true)}
-                    size="small"
-                    sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}
-                    aria-label={t('showFieldList')}
-                  >
-                    <GrassIcon fontSize="small" color="primary" />
-                  </IconButton>
-                </Tooltip>
-              )}
-              <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+          {selectedField && !listOpen && isMobile && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+              <Tooltip title={t('showFieldList')}>
+                <IconButton
+                  onClick={() => setListOpen(true)}
+                  size="small"
+                  sx={{ bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}
+                  aria-label={t('showFieldList')}
+                >
+                  <GrassIcon fontSize="small" color="primary" />
+                </IconButton>
+              </Tooltip>
+              <Typography variant="body2" noWrap color="text.secondary" sx={{ fontWeight: 500 }}>
                 {selectedField.name}
               </Typography>
             </Box>

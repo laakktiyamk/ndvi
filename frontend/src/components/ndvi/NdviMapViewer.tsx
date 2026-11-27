@@ -399,6 +399,8 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
           userSelect: 'none',
           overscrollBehaviorX: 'none',
           touchAction: 'pan-y',
+          WebkitTapHighlightColor: 'transparent',
+          '& svg:focus, & svg *:focus': { outline: 'none' },
         }}
       >
         {isFirstLoad && (
@@ -668,19 +670,19 @@ export default function NdviMapViewer({ fieldId, fieldName, geometry }: Props) {
         flex: '0 0 35%', height: '100%', minHeight: 0,
         display: isFullscreen ? 'none' : 'flex', flexDirection: 'column',
       }}>
-          <NdviViewPanel
-            fieldId={fieldId}
-            fieldName={fieldName}
-            geometry={geometry}
-            entry={current}
-            entries={filteredImages}
-            allEntries={allEntries}
-            selectedIndex={index}
-            onSelect={setIndex}
-            cropParcels={cropParcels}
-            selectedParcelKey={selectedParcelKey}
-            onSelectParcel={toggleSelectedParcel}
-          />
+        <NdviViewPanel
+          fieldId={fieldId}
+          fieldName={fieldName}
+          geometry={geometry}
+          entry={current}
+          entries={filteredImages}
+          allEntries={allEntries}
+          selectedIndex={index}
+          onSelect={setIndex}
+          cropParcels={cropParcels}
+          selectedParcelKey={selectedParcelKey}
+          onSelectParcel={toggleSelectedParcel}
+        />
       </Box>
 
       {filmrollDialog}

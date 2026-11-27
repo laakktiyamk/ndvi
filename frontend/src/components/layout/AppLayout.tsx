@@ -18,6 +18,7 @@ import SettingsMenu from './SettingsMenu';
 import { useAuthStore } from '../../store/authStore';
 import ManualDialog from '../manual/ManualDialog';
 import { useManualStore } from '../../store/manualStore';
+import FieldNoteControl from '../fieldNote/FieldNoteControl';
 
 const DRAWER_WIDTH = 240;
 const APPBAR_HEIGHT = 64;
@@ -80,6 +81,11 @@ export default function AppLayout({ themeMode, onToggleTheme }: Props) {
                 <Typography variant="body2" noWrap color="inherit" sx={{ opacity: 0.85, fontWeight: 500 }}>
                   {activeFieldName}
                 </Typography>
+                {activeGeometryHash && (
+                  <Box sx={{ alignSelf: 'center', flexShrink: 0, ml: -0.5 }}>
+                    <FieldNoteControl aoiId={activeGeometryHash} />
+                  </Box>
+                )}
               </>
             )}
           </Box>

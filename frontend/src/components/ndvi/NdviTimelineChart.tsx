@@ -20,7 +20,7 @@ import type { MergedNdviEntry } from '../../types';
 import { useAppStore } from '../../store/appStore';
 import { getFieldColorMap } from './CropFieldsOverlay';
 
-import { buildCropParcelSeries, mergeParcelValues} from '../../utils/cropParcelChartUtils';
+import { buildCropParcelSeries, mergeParcelValues } from '../../utils/cropParcelChartUtils';
 
 interface Props {
   entries: MergedNdviEntry[];
@@ -36,17 +36,13 @@ const NDVI_COLOR = (v: number) => {
   return '#C62828';
 };
 
-const fmtDate = (iso: string, lang = 'fi') => {
-  const d = new Date(iso);
-  return d.toLocaleDateString(lang === 'fi' ? 'fi-FI' : 'en-US');
-};
+const locale = (lang = 'fi') => (lang.startsWith('fi') ? 'fi-FI' : 'en-GB');
 
-const fmtDateShort = (iso: string, lang = 'fi') => {
-  const d = new Date(iso);
-  return d.toLocaleDateString(lang === 'fi' ? 'fi-FI' : 'en-US', {
-    day: 'numeric', month: 'numeric',
-  });
-};
+const fmtDate = (iso: string, lang = 'fi') =>
+  new Date(iso).toLocaleDateString(locale(lang));
+
+const fmtDateShort = (iso: string, lang = 'fi') =>
+  new Date(iso).toLocaleDateString(locale(lang), { day: 'numeric', month: 'numeric' });
 
 type ChartType = 'line' | 'bar';
 
@@ -82,7 +78,7 @@ export default function NdviTimelineChart({
   const parcelSeries = cropParcels.length > 1 && selectedParcelKey
     ? buildCropParcelSeries(cropParcelStats, year).filter(s => s.key === selectedParcelKey)
     : [];
-    
+
   const fieldColors = getFieldColorMap(cropParcels);
   const parcelLabel = (kasvikoodi: string | undefined, lohkonumero: string) =>
     `${lohkonumero} · ${kasvikoodi ? t(`crop:${kasvikoodi}`) : ''}`;
@@ -91,8 +87,8 @@ export default function NdviTimelineChart({
     i,
     date: e.generationtime,
     mean: parseFloat(e.stats.average.toFixed(4)),
-    min:  parseFloat(e.stats.min.toFixed(4)),
-    max:  parseFloat(e.stats.max.toFixed(4)),
+    min: parseFloat(e.stats.min.toFixed(4)),
+    max: parseFloat(e.stats.max.toFixed(4)),
     // Area-komponentti käyttää [low, high] -muotoa shaded alueelle
     stdRange: [
       parseFloat(Math.max(0, e.stats.average - e.stats.std).toFixed(4)),
@@ -117,9 +113,10 @@ export default function NdviTimelineChart({
 
   const commonProps = {
     data,
-    margin: { top: 8, right: 16, left: -16, bottom: 0 },
+    margin: { top: 8, right: 16, left: 0, bottom: 0 },
     onClick: handleClick,
     style: { cursor: 'pointer' },
+    accessibilityLayer: false,
   };
 
   const axes = (
@@ -133,11 +130,13 @@ export default function NdviTimelineChart({
       />
       <YAxis
         domain={[0, 1]}
+        ticks={[0, 0.2, 0.4, 0.6, 0.8, 1]}
         tickFormatter={(v) => v.toFixed(1)}
         tick={{ fontSize: 10 }}
-        width={36}
+        width={32}
       />
       <Tooltip
+        cursor={chartType === 'bar' ? false : true}
         contentStyle={{
           fontSize: '0.75rem',
           padding: '4px 8px',
@@ -178,8 +177,8 @@ export default function NdviTimelineChart({
     />
   ));
 
-  // Selite valitusta lohkosta otsikkoriville
-  const parcelLegend = chartType === 'line' && parcelSeries.length > 0 && (
+  // Selite valitusta lohkosta otsikkoriville (molemmissa moodeissa)
+  const parcelLegend = parcelSeries.length > 0 && (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', mt: 0.5 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
         <Box sx={{ width: 14, height: 3, bgcolor: '#689F38', borderRadius: 1 }} />
@@ -298,10 +297,10 @@ export default function NdviTimelineChart({
           )}
         </ComposedChart>
       ) : (
-        // Bar-moodi täsmälleen alkuperäinen
-        <BarChart {...commonProps}>
+        // Bar-moodi: pellon pylväs + valitun lohkon pylväs vierekkäin
+        <BarChart {...commonProps} barGap={1}>
           {axes}
-          <Bar dataKey="mean" isAnimationActive={false} radius={[2, 2, 0, 0]}>
+          <Bar dataKey="mean" name={t('field') ?? 'Pelto'} isAnimationActive={false} radius={[2, 2, 0, 0]}>
             {data.map((entry) => (
               <Cell
                 key={`cell-${entry.i}`}
@@ -312,6 +311,24 @@ export default function NdviTimelineChart({
               />
             ))}
           </Bar>
+          {/* Valittu kasvulohko: puuttuva päivä (null) → ei pylvästä */}
+          {parcelSeries.map(s => (
+            <Bar
+              key={s.key}
+              dataKey={s.key}
+              name={parcelLabel(s.kasvikoodi, s.lohkonumero)}
+              fill={fieldColors[s.key] ?? theme.palette.info.main}
+              isAnimationActive={false}
+              radius={[2, 2, 0, 0]}
+            >
+              {data.map((entry) => (
+                <Cell
+                  key={`pcell-${s.key}-${entry.i}`}
+                  opacity={entry.i === selectedIndex ? 1 : 0.55}
+                />
+              ))}
+            </Bar>
+          ))}
           {selected && (
             <ReferenceLine x={selected.date} stroke={selected.color} strokeDasharray="4 2" strokeWidth={1.5} />
           )}

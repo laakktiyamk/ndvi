@@ -270,5 +270,15 @@
   "startYear": "Aloitusvuosi",
   "startYearHelper": "Data haetaan {{date}} alkaen",
   "err_INVALID_START_DATE": "Aloituspäivä ei kelpaa (aikaisintaan 1.4.2020).",
-  "about": "Tietoja"
+  "about": "Tietoja",
+  "field": "Pelto",
+  "fieldNote": {
+    "tooltip": "Muistiinpano",
+    "title": "Pellon muistiinpano",
+    "placeholder": "Kirjoita muistiinpano tästä pellosta…",
+    "updated": "Muokattu {{date}}",
+    "clear": "Tyhjennä",
+    "confirmClear": "Tyhjennetäänkö muistiinpano?",
+    "saveError": "Tallennus epäonnistui"
+  }
 }
