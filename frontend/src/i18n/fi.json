@@ -279,6 +279,10 @@
     "updated": "Muokattu {{date}}",
     "clear": "Tyhjennä",
     "confirmClear": "Tyhjennetäänkö muistiinpano?",
-    "saveError": "Tallennus epäonnistui"
+    "saveError": "Tallennus epäonnistui",
+    "general": "Yleinen",
+    "season": "Kausi {{year}}",
+    "placeholderGeneral": "Pysyvät asiat, esim. märkä kohta, kivikko, salaojat…",
+    "placeholderSeason": "Kauden tapahtumat, esim. kylvö, lannoitus, niitto…"
   }
 }

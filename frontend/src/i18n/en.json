@@ -279,6 +279,10 @@
     "updated": "Edited {{date}}",
     "clear": "Clear",
     "confirmClear": "Clear the note?",
-    "saveError": "Saving failed"
+    "saveError": "Saving failed",
+    "general": "General",
+    "season": "Season {{year}}",
+    "placeholderGeneral": "Permanent things, e.g. wet spots, stones, drainage…",
+    "placeholderSeason": "Season events, e.g. sowing, fertilizing, mowing…"
   }
 }

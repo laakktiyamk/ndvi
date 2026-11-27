@@ -1,18 +1,37 @@
 import {apiClient} from '../api/client'; 
 
-export interface IFieldNote {
+export interface INote {
   text: string;
   updatedAt: string | null;
 }
 
-/** Hakee käyttäjän muistiinpanon pellolle. Tyhjä, jos muistiinpanoa ei ole. */
-export async function fetchFieldNote(aoiId: string): Promise<IFieldNote> {
-  const { data } = await apiClient.get<IFieldNote>(`/api/fields/${aoiId}/note`);
+export interface IFieldNotes {
+  general: INote;
+  season: (INote & { year: number }) | null;
+}
+
+/** Hakee pellon yleisen ja valitun vuoden muistiinpanon. */
+export async function fetchFieldNotes(aoiId: string, year: number): Promise<IFieldNotes> {
+  const { data } = await apiClient.get<IFieldNotes>(`/api/fields/${aoiId}/note`, {
+    params: { year },
+  });
   return data;
 }
 
-/** Tallentaa muistiinpanon. Tyhjä teksti poistaa sen. */
-export async function saveFieldNote(aoiId: string, text: string): Promise<IFieldNote> {
-  const { data } = await apiClient.put<IFieldNote>(`/api/fields/${aoiId}/note`, { text });
+/**
+ * Tallentaa yhden muistiinpanon. Tyhjä teksti poistaa sen.
+ *
+ * @param year - null = yleinen, numero = kauden muistiinpano.
+ */
+export async function saveFieldNote(
+  aoiId: string,
+  year: number | null,
+  text: string
+): Promise<INote> {
+  const { data } = await apiClient.put<INote>(
+    `/api/fields/${aoiId}/note`,
+    { text },
+    { params: year === null ? undefined : { year } }
+  );
   return data;
 }
